@@ -234,6 +234,12 @@ describe('Delete user CLI', () => {
     expect(mockMethods.deleteUserCodeEnvironments).not.toHaveBeenCalled();
   });
 
+  it('deletes prompt groups by author only, so a synced group with a synthetic author is untouched', async () => {
+    expect(await runCli()).toBe(0);
+
+    expect(mockModelFor('PromptGroup').deleteMany).toHaveBeenCalledWith({ author: USER_ID });
+  });
+
   it('deletes nothing and releases both fences when provider drain fails', async () => {
     mockGetCleanupBlockingJobIdsForUser.mockResolvedValueOnce(['stream-1']);
     mockAbortJob.mockRejectedValueOnce(new Error('provider drain failed'));
