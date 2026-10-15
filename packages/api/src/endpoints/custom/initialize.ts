@@ -17,6 +17,7 @@ import type {
 import { getLLMConfig as getAnthropicLLMConfig } from '~/endpoints/anthropic/llm';
 import { resolveModelTransportTimeouts } from '~/agents/config';
 import { extractDefaultParams } from '~/endpoints/openai/llm';
+import { createNearAIFetch, isNearAIBaseURL } from '~/nearai';
 import { isUserProvided, checkUserKeyExpiry } from '~/utils';
 import { getOpenAIConfig } from '~/endpoints/openai/config';
 import { getScopedTokenConfigKey } from '~/endpoints/keys';
@@ -342,6 +343,10 @@ export async function initializeCustom(
     if (options != null) {
       options.useLegacyContent = true;
       options.endpointTokenConfig = endpointTokenConfig;
+    }
+    /** NEAR AI: Chat goes through the inference SDK, which verifies the deployment first. */
+    if (options?.configOptions != null && !userProvidesURL && isNearAIBaseURL(baseURL)) {
+      options.configOptions.fetch = createNearAIFetch({ apiKey, baseURL });
     }
   }
 

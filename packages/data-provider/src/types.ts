@@ -1250,6 +1250,34 @@ export type TUpdateFeedbackResponse = {
   feedback?: TMinimalFeedback;
 };
 
+/** NEAR AI deployment attestation, verified server-side by the inference SDK. */
+export type TNearAIAttestationResponse =
+  | { enabled: false }
+  | {
+      enabled: true;
+      model: string;
+      status: 'verified' | 'failed';
+      checkedAt: string;
+      errorCode?: string;
+      message?: string;
+      /** NEAR AI verify page; the shields link to it with the model and receipts. */
+      verifyUrl?: string;
+    };
+
+/** Signature check for one NEAR AI completion, saved on the reply's `metadata.nearai.receipts`. */
+export type TNearAIReceipt = {
+  completionId: string;
+  model: string;
+  status: 'verified' | 'failed';
+  verifiedAt: string;
+  signatureKind?: 'provider_tee' | 'gateway';
+  signingAlgo?: string;
+  signingAddress?: string;
+  signedText?: string;
+  signature?: string;
+  errorCode?: string;
+};
+
 export type TBalanceResponse = {
   tokenCredits: number;
   // Automatic refill settings
