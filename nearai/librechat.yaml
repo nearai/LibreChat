@@ -41,7 +41,11 @@ interface:
     use: false
 
 registration:
-  socialLogins: []
+  socialLogins: ['google']
+  # Google sign-ins and new registrations must be a near.ai address
+  # (existing password accounts are not re-checked).
+  allowedDomains:
+    - 'near.ai'
 
 endpoints:
   custom:
