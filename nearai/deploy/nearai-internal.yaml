@@ -1,0 +1,202 @@
+# NEAR AI internal deployment ("Private AI for NEAR AI"): branch deploy/nearai-internal.
+# Loaded via CONFIG_PATH=/app/nearai/deploy/nearai-internal.yaml (see nearai/deploy/README.md).
+# Same NEAR AI endpoint as nearai/librechat.yaml, plus the NEAR AI brand theme, Google
+# sign-in restricted to near.ai, and the internal welcome text. No secrets here.
+version: 1.3.17
+cache: true
+
+interface:
+  # NEAR AI brand (near.ai/brand): Blue #0091FD primary, Black, Off-White #EEEEEB,
+  # Dark Grey #272727, Grey #A7A7A7, Sky #83DCFF; Schibsted Grotesk / Mona Sans / JetBrains Mono.
+  # Large fills (send button, rings, icons) use Blue #0091FD with black on top (6.5:1); text, links
+  # and white-label buttons use a darker brand blue #0066B3 (light) or Sky (dark) to keep WCAG AA.
+  theme:
+    version: 1
+    name: nearai
+    modes:
+      light:
+        colors:
+          rgb-text-primary: '22 23 27'              # #16171B labels, headings (near.ai text)
+          rgb-text-secondary: '51 51 51'            # #333333 message body text (LibreChat prose reads text-secondary)
+          rgb-text-secondary-alt: '82 82 82'        # #525252 secondary UI text
+          rgb-text-tertiary: '105 105 105'          # #696969 meta: >=4.5:1 on white and Off-White
+          rgb-text-muted: '82 82 82'                # #525252
+          rgb-dialog-title: '22 23 27'              # #16171B
+          rgb-link: '0 102 179'                     # #0066B3 brand blue, darkened: >=4.7:1 on every light surface
+          rgb-link-hover: '0 85 143'                # #00558F
+          rgb-link-prose: '0 102 179'               # #0066B3
+          rgb-accent-primary: '0 102 179'           # #0066B3 accent used as text (e.g. Sign up)
+          rgb-accent-primary-hover: '0 85 143'      # #00558F
+          rgb-ring-primary: '0 145 253'             # #0091FD
+          rgb-status-verified: '0 145 253'          # #0091FD
+          rgb-status-info: '0 102 179'              # #0066B3
+          rgb-status-info-subtle: '224 243 255'     # #E0F3FF Sky tint
+          rgb-status-info-border: '131 220 255'     # #83DCFF brand Sky
+          rgb-surface-submit: '0 102 179'           # #0066B3 text buttons: white label 5.9:1
+          rgb-surface-submit-hover: '0 85 143'      # #00558F
+          rgb-surface-inverted: '0 145 253'         # #0091FD send button, primary actions
+          rgb-surface-inverted-hover: '0 114 201'   # #0072C9
+          rgb-surface-inverted-pressed: '0 114 201' # #0072C9
+          rgb-button-primary: '0 145 253'           # #0091FD
+          rgb-button-primary-hover: '0 114 201'     # #0072C9
+          rgb-text-inverted: '0 0 0'                # #000000 black on brand Blue
+          rgb-surface-primary: '253 253 253'        # #FDFDFD greyscale lightest
+          rgb-surface-chat: '253 253 253'           # #FDFDFD
+          rgb-surface-composer: '255 255 255'       # #FFFFFF
+          rgb-header-primary: '253 253 253'         # #FDFDFD
+          rgb-surface-dialog: '253 253 253'         # #FDFDFD
+          rgb-surface-popover: '253 253 253'        # #FDFDFD
+          rgb-surface-menu: '253 253 253'           # #FDFDFD
+          rgb-surface-canvas: '253 253 253'         # #FDFDFD chat area, same as the sign-in page
+          rgb-surface-primary-alt: '238 238 235'    # #EEEEEB
+          rgb-surface-secondary: '238 238 235'      # #EEEEEB
+          rgb-surface-card: '238 238 235'           # #EEEEEB
+          rgb-surface-search: '238 238 235'         # #EEEEEB
+          rgb-surface-code: '238 238 235'           # #EEEEEB
+          rgb-header-hover: '238 238 235'           # #EEEEEB
+          rgb-surface-tertiary: '230 230 230'       # #E6E6E6 greyscale
+          rgb-surface-user-message: '238 238 235'   # #EEEEEB your bubbles: brand Off-White, neutral
+          rgb-surface-active: '230 230 230'         # #E6E6E6
+          rgb-surface-hover: '230 230 230'          # #E6E6E6
+          rgb-surface-nav-hover: '231 231 228'      # #E7E7E4 sidebar hover
+          rgb-surface-card-hover: '230 230 230'     # #E6E6E6
+          rgb-surface-tab-selected: '230 230 230'   # #E6E6E6
+          rgb-surface-code-inline: '230 230 230'    # #E6E6E6
+          rgb-header-button-hover: '230 230 230'    # #E6E6E6
+          rgb-surface-active-alt: '213 213 213'     # #D5D5D5 greyscale
+          rgb-surface-hover-alt: '213 213 213'      # #D5D5D5
+          rgb-surface-nav-selected: '223 223 219'   # #DFDFDB selected chat: lighter than #D5D5D5
+          rgb-border-light: '230 230 230'           # #E6E6E6
+          rgb-border-control: '213 213 213'         # #D5D5D5
+          rgb-border-menu: '230 230 230'            # #E6E6E6
+          rgb-chart-widget-stroke: '230 230 230'    # #E6E6E6
+          rgb-border-medium: '213 213 213'          # #D5D5D5
+          rgb-border-medium-alt: '213 213 213'      # #D5D5D5
+          rgb-border-heavy: '180 180 180'           # #B4B4B4
+          rgb-border-xheavy: '133 133 133'          # #858585
+        appearance:
+          fontFamily: "'Mona Sans', system-ui, sans-serif"                  # brand body
+          displayFontFamily: "'Schibsted Grotesk', 'Mona Sans', system-ui, sans-serif"  # brand display
+          dialogTitleFontFamily: "'Schibsted Grotesk', 'Mona Sans', system-ui, sans-serif"
+          monoFontFamily: "'JetBrains Mono', ui-monospace, monospace"       # brand utility
+          controlFontWeight: '600'                                           # brand: semibold buttons
+          dialogTitleFontWeight: '600'
+      dark:
+        colors:
+          rgb-text-primary: '253 253 253'           # #FDFDFD
+          rgb-text-secondary: '213 213 213'         # #D5D5D5 message body text (greyscale)
+          rgb-text-secondary-alt: '167 167 167'     # #A7A7A7 secondary UI text (brand Grey)
+          rgb-text-tertiary: '133 133 133'          # #858585
+          rgb-text-muted: '167 167 167'             # #A7A7A7
+          rgb-dialog-title: '253 253 253'           # #FDFDFD
+          rgb-link: '131 220 255'                   # #83DCFF brand Sky (13.6:1 on black)
+          rgb-link-hover: '0 145 253'               # #0091FD
+          rgb-link-prose: '131 220 255'             # #83DCFF
+          rgb-accent-primary: '0 145 253'           # #0091FD brand Blue
+          rgb-accent-primary-hover: '131 220 255'   # #83DCFF
+          rgb-ring-primary: '0 145 253'             # #0091FD
+          rgb-status-verified: '0 145 253'          # #0091FD
+          rgb-status-info: '131 220 255'            # #83DCFF
+          rgb-status-info-subtle: '7 49 79'         # #07314F
+          rgb-status-info-border: '35 133 199'      # #2385C7 brand Deep Blue
+          rgb-surface-submit: '0 102 179'           # #0066B3 text buttons: white label 5.9:1
+          rgb-surface-submit-hover: '0 85 143'      # #00558F
+          rgb-surface-inverted: '0 145 253'         # #0091FD
+          rgb-surface-inverted-hover: '35 133 199'  # #2385C7
+          rgb-surface-inverted-pressed: '35 133 199'# #2385C7
+          rgb-button-primary: '0 145 253'           # #0091FD
+          rgb-button-primary-hover: '35 133 199'    # #2385C7
+          rgb-text-inverted: '0 0 0'                # #000000 black on brand Blue
+          rgb-surface-primary: '5 5 5'              # #050505
+          rgb-surface-chat: '5 5 5'                 # #050505
+          rgb-header-primary: '5 5 5'               # #050505
+          rgb-surface-canvas: '5 5 5'               # #050505 page / chat area (near.ai --cl-bg)
+          rgb-surface-primary-alt: '12 12 12'       # #0C0C0C sidebar (--cl-bg2)
+          rgb-surface-secondary: '17 17 17'         # #111111
+          rgb-surface-card: '17 17 17'              # #111111
+          rgb-surface-search: '17 17 17'            # #111111
+          rgb-surface-code: '17 17 17'              # #111111
+          rgb-surface-dialog: '17 17 17'            # #111111
+          rgb-surface-popover: '17 17 17'           # #111111
+          rgb-surface-menu: '17 17 17'              # #111111
+          rgb-surface-composer: '17 17 17'          # #111111 composer, cards, menus (--cl-surface)
+          rgb-surface-tertiary: '25 25 25'          # #191919 hover, user message (--cl-surface2)
+          rgb-surface-user-message: '31 31 31'      # #1F1F1F your bubbles: neutral, a step above the page
+          rgb-surface-active: '25 25 25'            # #191919
+          rgb-surface-hover: '25 25 25'             # #191919
+          rgb-surface-nav-hover: '25 25 25'         # #191919
+          rgb-surface-card-hover: '25 25 25'        # #191919
+          rgb-header-hover: '25 25 25'              # #191919
+          rgb-surface-active-alt: '39 39 39'        # #272727 selected (brand Dark Grey)
+          rgb-surface-hover-alt: '39 39 39'         # #272727
+          rgb-surface-nav-selected: '39 39 39'      # #272727
+          rgb-surface-tab-selected: '39 39 39'      # #272727
+          rgb-header-button-hover: '39 39 39'       # #272727
+          rgb-surface-code-inline: '39 39 39'       # #272727
+          rgb-border-light: '31 31 31'              # #1F1F1F hairline (~8% white)
+          rgb-border-control: '46 46 46'            # #2E2E2E field edge (~14% white)
+          rgb-border-menu: '31 31 31'               # #1F1F1F
+          rgb-chart-widget-stroke: '31 31 31'       # #1F1F1F
+          rgb-border-medium: '46 46 46'             # #2E2E2E
+          rgb-border-medium-alt: '46 46 46'         # #2E2E2E
+          rgb-border-heavy: '82 82 82'              # #525252
+          rgb-border-xheavy: '133 133 133'          # #858585
+          rgb-drawer-edge: '12 12 12'               # #0C0C0C
+          rgb-field-fill: '17 17 17'                # #111111
+        appearance:
+          fontFamily: "'Mona Sans', system-ui, sans-serif"                  # brand body
+          displayFontFamily: "'Schibsted Grotesk', 'Mona Sans', system-ui, sans-serif"  # brand display
+          dialogTitleFontFamily: "'Schibsted Grotesk', 'Mona Sans', system-ui, sans-serif"
+          monoFontFamily: "'JetBrains Mono', ui-monospace, monospace"       # brand utility
+          controlFontWeight: '600'                                           # brand: semibold buttons
+          dialogTitleFontWeight: '600'
+  customWelcome: 'Private AI for NEAR AI.'
+  modelSelect: true
+  parameters: false
+  presets: false
+  memories: false
+  bookmarks: true
+  multiConvo: false
+  temporaryChat: true
+  runCode: false
+  webSearch: false
+  fileSearch: false
+  fileCitations: false
+  prompts:
+    use: true
+    create: true
+    share: false
+    public: false
+  agents:
+    use: false
+    create: false
+    share: false
+    public: false
+  mcpServers:
+    use: false
+    create: false
+    share: false
+    public: false
+  marketplace:
+    use: false
+
+registration:
+  socialLogins: ['google']
+  # Google sign-ins and new registrations must be a near.ai address
+  # (existing password accounts are not re-checked).
+  allowedDomains:
+    - 'near.ai'
+
+endpoints:
+  custom:
+    - name: 'NEAR AI'
+      apiKey: '${NEAR_API_KEY}'
+      baseURL: 'https://cloud-api.near.ai/v1'
+      models:
+        default:
+          - 'Qwen/Qwen3.6-35B-A3B-FP8'
+          - 'z-ai/glm-5.3-flash'
+        fetch: false
+      titleConvo: true
+      titleModel: 'Qwen/Qwen3.6-35B-A3B-FP8'
+      modelDisplayLabel: 'NEAR AI'

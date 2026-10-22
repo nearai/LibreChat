@@ -151,11 +151,11 @@ export default defineConfig(({ command }) => ({
       },
       includeAssets: [],
       manifest: {
-        name: 'LibreChat',
-        short_name: 'LibreChat',
+        name: 'Private AI',
+        short_name: 'Private AI',
         display: 'standalone',
         background_color: '#000000',
-        theme_color: '#009688',
+        theme_color: '#0091FD',
         icons: [
           {
             src: 'assets/favicon-32x32.png',
