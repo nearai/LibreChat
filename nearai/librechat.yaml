@@ -41,11 +41,11 @@ interface:
     use: false
 
 registration:
-  socialLogins: ['google']
-  # Google sign-ins and new registrations must be a near.ai address
-  # (existing password accounts are not re-checked).
-  allowedDomains:
-    - 'near.ai'
+  socialLogins: []
+  # Deployments that enable Google sign-in usually restrict it to their own domain:
+  #   socialLogins: ['google']
+  #   allowedDomains: ['example.com']
+  # LibreChat enforces allowedDomains on every Google sign-in and new registration.
 
 endpoints:
   custom:
