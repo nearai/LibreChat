@@ -78,6 +78,8 @@ api/tsconfig.json
 
 #config file
 librechat.yaml
+# NEAR AI deployment config: no secrets, loaded via CONFIG_PATH
+!nearai/librechat.yaml
 librechat.yml
 
 # Environment

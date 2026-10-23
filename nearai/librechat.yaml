@@ -1,0 +1,62 @@
+# NEAR AI confidential chat: LibreChat config for deployments of this fork.
+# Loaded via CONFIG_PATH=/app/nearai/librechat.yaml (see nearai/README.md).
+# No secrets here: the API key comes from the NEAR_API_KEY env var.
+#
+# Any custom endpoint whose baseURL is cloud-api.near.ai goes through the NEAR AI
+# inference SDK: the Gateway and model TEE are attested before each request,
+# prompts are encrypted to the model TEE, and every reply's signature is checked
+# and saved on the message (shown as a shield next to the reply).
+version: 1.3.17
+cache: true
+
+interface:
+  customWelcome: 'Confidential chat on NEAR AI. Every reply is verified.'
+  modelSelect: true
+  parameters: false
+  presets: false
+  memories: false
+  bookmarks: true
+  multiConvo: false
+  temporaryChat: true
+  runCode: false
+  webSearch: false
+  fileSearch: false
+  fileCitations: false
+  prompts:
+    use: true
+    create: true
+    share: false
+    public: false
+  agents:
+    use: false
+    create: false
+    share: false
+    public: false
+  mcpServers:
+    use: false
+    create: false
+    share: false
+    public: false
+  marketplace:
+    use: false
+
+registration:
+  socialLogins: []
+  # Deployments that enable Google sign-in usually restrict it to their own domain:
+  #   socialLogins: ['google']
+  #   allowedDomains: ['example.com']
+  # LibreChat enforces allowedDomains on every Google sign-in and new registration.
+
+endpoints:
+  custom:
+    - name: 'NEAR AI'
+      apiKey: '${NEAR_API_KEY}'
+      baseURL: 'https://cloud-api.near.ai/v1'
+      models:
+        default:
+          - 'Qwen/Qwen3.6-35B-A3B-FP8'
+          - 'z-ai/glm-5.3-flash'
+        fetch: false
+      titleConvo: true
+      titleModel: 'Qwen/Qwen3.6-35B-A3B-FP8'
+      modelDisplayLabel: 'NEAR AI'

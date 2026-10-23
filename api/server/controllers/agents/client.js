@@ -207,6 +207,8 @@ const {
   markCompactionOutcome,
   resolvePersistableCodeEnvironmentDecision,
   getChatProjectContextKey,
+  runWithNearAIReceipts,
+  createNearAIReceiptCollector,
 } = require('@librechat/api');
 const {
   Run,
@@ -3672,12 +3674,17 @@ class AgentClient extends BaseClient {
 
   /** @type {sendCompletion} */
   async sendCompletion(payload, opts = {}) {
-    await this.chatCompletion({
-      payload,
-      onProgress: opts.onProgress,
-      userMCPAuthMap: opts.userMCPAuthMap,
-      abortController: opts.abortController,
-    });
+    /** NEAR AI completions made during this run report their signature receipts here. */
+    const nearaiReceipts = createNearAIReceiptCollector();
+    await runWithNearAIReceipts(nearaiReceipts, () =>
+      this.chatCompletion({
+        payload,
+        onProgress: opts.onProgress,
+        userMCPAuthMap: opts.userMCPAuthMap,
+        abortController: opts.abortController,
+      }),
+    );
+    this.nearaiReceipts = await nearaiReceipts.settle();
 
     const completion = filterMalformedContentParts(this.contentParts);
     if (this.isCompactionTurn()) {
@@ -3715,6 +3722,9 @@ class AgentClient extends BaseClient {
     const signatures = this.collectedThoughtSignatures;
     if (signatures && Object.keys(signatures).length > 0) {
       metadata.thoughtSignatures = signatures;
+    }
+    if (this.nearaiReceipts?.length > 0) {
+      metadata.nearai = { receipts: this.nearaiReceipts };
     }
     const usageEvents = this.usageEmitSink ?? [];
     /** Persist the breakdown only when the latest snapshot's OWN run completed —

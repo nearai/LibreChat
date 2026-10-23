@@ -297,6 +297,14 @@ export function getUserBalance(): Promise<t.TBalanceResponse> {
   return request.get(endpoints.balance());
 }
 
+export function getNearAIAttestation(params: {
+  endpoint: string;
+  model: string;
+  refresh?: boolean;
+}): Promise<t.TNearAIAttestationResponse> {
+  return request.get(endpoints.nearaiAttestation(params));
+}
+
 export const updateTokenCount = (text: string) => {
   return request.post(endpoints.tokenizer(), { arg: text });
 };

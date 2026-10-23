@@ -46,6 +46,9 @@ export const userPreferences = () => `${user()}/preferences`;
 
 export const balance = () => `${BASE_URL}/api/balance`;
 
+export const nearaiAttestation = (params: { endpoint: string; model: string; refresh?: boolean }) =>
+  `${BASE_URL}/api/nearai/attestation${buildQuery({ ...params, refresh: params.refresh ? '1' : undefined })}`;
+
 export const userPlugins = () => `${BASE_URL}/api/user/plugins`;
 
 export const deleteUser = () => `${BASE_URL}/api/user/delete`;

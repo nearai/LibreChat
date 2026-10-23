@@ -99,6 +99,8 @@ export * from './user';
 export * from './plugins';
 /* Endpoints */
 export * from './endpoints';
+/* NEAR AI attestation */
+export * from './nearai';
 /* Files */
 export * from './files';
 /* Images */

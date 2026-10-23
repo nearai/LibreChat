@@ -28,6 +28,7 @@ const banner = require('./banner');
 const openapi = require('./openapi');
 const search = require('./search');
 const models = require('./models');
+const nearai = require('./nearai');
 const convos = require('./convos');
 const traces = require('./traces');
 const config = require('./config');
@@ -76,6 +77,7 @@ module.exports = {
   search,
   config,
   models,
+  nearai,
   prompts,
   projects,
   schedules,
