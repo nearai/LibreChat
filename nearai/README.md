@@ -8,7 +8,7 @@ Any custom endpoint whose `baseURL` is `cloud-api.near.ai` gets three things:
 - **End-to-end encryption.** Prompts are encrypted to the attested model key, so the NEAR AI Gateway never sees them.
 - **A verified signature on every reply.** The model TEE signs the exact request and response; LibreChat checks the signature and saves it on the message.
 
-Users see this as shields: one in the header for the model, one on each reply. Both link to the NEAR AI Verification Center (`NEAR_AI_VERIFY_URL`), which re-checks everything independently in the browser.
+Users see this as shields: one in the header for the model, one on each reply. Both link to the NEAR AI Verification Center at https://cloud.near.ai/verify (set with `NEAR_AI_VERIFY_URL`), which re-checks the attestation and the reply signature independently in the browser. A reply link carries its signature receipt in the URL fragment, so the receipt never reaches NEAR AI's servers.
 
 The NEAR AI changes live on the `nearai-attestation` branch. This folder holds the deployment config:
 
