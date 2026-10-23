@@ -25,6 +25,7 @@ uses a darker brand blue `#0066B3` (light) or Sky (dark) to keep WCAG AA contras
   the near.ai Google Workspace with an "Internal" consent screen; its redirect URI is
   `https://librechat-nearai.up.railway.app/oauth/google/callback`.
 - `DOMAIN_CLIENT` and `DOMAIN_SERVER` = `https://librechat-nearai.up.railway.app`.
+- `NEAR_AI_VERIFY_URL=https://cloud.near.ai/verify` (the shields' "View details on NEAR AI" link).
 
 ## Updating from the product
 
