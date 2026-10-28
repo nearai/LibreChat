@@ -9,13 +9,6 @@ function toBase64Url(value: string): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-/** NEAR AI verify page for a model's deployment. */
-export function modelVerifyLink(verifyUrl: string, model: string): string {
-  const url = new URL(verifyUrl);
-  url.searchParams.set('model', model);
-  return url.toString();
-}
-
 /**
  * NEAR AI verify page for one reply. The receipt goes in the fragment, which the
  * browser never sends to the server; it holds only hashes and the signature.
@@ -34,7 +27,8 @@ export function receiptVerifyLink(verifyUrl: string, receipt: TNearAIReceipt): s
     signature: receipt.signature,
     verifiedAt: receipt.verifiedAt,
   };
-  const url = new URL(modelVerifyLink(verifyUrl, receipt.model));
+  const url = new URL(verifyUrl);
+  url.searchParams.set('model', receipt.model);
   url.hash = `receipt=${toBase64Url(JSON.stringify(payload))}`;
   return url.toString();
 }

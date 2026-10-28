@@ -1,20 +1,26 @@
 # NEAR AI LibreChat
 
-This fork of [LibreChat](https://github.com/LibreChat-AI/LibreChat) lets a company run LibreChat for its employees on NEAR AI confidential inference. The company trusts its own LibreChat deployment; it does not have to trust NEAR AI, because LibreChat verifies everything itself with [`@nearai/inference-sdk`](https://www.npmjs.com/package/@nearai/inference-sdk).
+This fork of [LibreChat](https://github.com/LibreChat-AI/LibreChat) runs on NEAR AI Cloud, using [`@nearai/inference-sdk`](https://www.npmjs.com/package/@nearai/inference-sdk) to verify the hardware and response signatures available for each model.
 
-Any custom endpoint whose `baseURL` is `cloud-api.near.ai` gets three things:
+Custom endpoints on `cloud-api.near.ai` or `cloud-stg-api.near.ai` follow the Cloud UI example's model capabilities:
 
-- **Attestation before every request.** The NEAR AI Gateway and the model's TEE (Intel TDX + NVIDIA GPU) are verified; the result is cached for an hour. If verification fails, the message is not sent.
-- **End-to-end encryption.** Prompts are encrypted to the attested model key, so the NEAR AI Gateway never sees them.
-- **A verified signature on every reply.** The model TEE signs the exact request and response; LibreChat checks the signature and saves it on the message.
+- **Private (`vllm`) models:** Gateway and model TEE verification, E2EE, and Ed25519 signatures.
+- **External and Chutes models:** Gateway verification and ECDSA signatures, without model E2EE or a claim that LibreChat attested model execution.
+- **Every reply:** the SDK checks the signature over the exact request and response bytes and saves its result on the message. Failed hardware verification blocks the request. Sessions are cached per model for an hour.
 
-Users see this as shields: one in the header for the model, one on each reply. Both link to the NEAR AI Verification Center at https://cloud.near.ai/verify (set with `NEAR_AI_VERIFY_URL`), which re-checks the attestation and the reply signature independently in the browser. A reply link carries its signature receipt in the URL fragment, so the receipt never reaches NEAR AI's servers.
+Both shields open the NEAR AI Verification Center in an iframe. The header shield fetches fresh hardware evidence and resets that model's Chat deployment cache. The reply shield combines its saved signature result with current hardware checks, matching the Cloud UI example. Hardware is merged only when the signer and deployment measurements match; the original signature, verdict and verification time remain unchanged. **Verify hardware again** refreshes hardware without resetting Chat's SDK session; **Reload viewer** only reloads the iframe. A failed hardware refresh shows unavailable hardware reports alongside the saved signature. Current hardware reports are not saved back to historical messages. Older messages without a report link to the standalone verification page using their saved receipt.
+
+`NEAR_AI_VERIFY_URL` defaults to `https://cloud-stg.near.ai/verify` and comes from authenticated startup config. The dialog follows the current light/dark mode and allows selecting one completion at a time. Report fields are filtered before storage and before sending. Fresh hardware reports include approved quote, nonce, event-log and GPU evidence fields; API keys, chat content and deployment configuration are excluded. Gateway-signed replies request Gateway evidence only and remain partial.
+
+Use a trusted viewer supporting the v1 iframe protocol. LibreChat validates the sender origin, iframe window and request ID, and cleans up on close or reload. The viewer enforces report consistency; LibreChat retains field selection and the protocol's 1 MiB limit. The viewer's `frame-ancestors` and LibreChat's `frame-src` must permit embedding. HTTPS parents and HTTP localhost/127.0.0.1 development parents are supported.
+
+Hardware checks default to the example's 45-second deadline. Set `nearai.verificationTimeoutMs` in `librechat.yaml` to override it (1–120 seconds). A timeout leaves the saved reply signature intact and permits retry.
 
 The NEAR AI changes live on the `nearai-attestation` branch. This folder holds the deployment config:
 
 | File | What it is |
 |---|---|
-| `nearai/librechat.yaml` | NEAR AI endpoint (Qwen3.6, GLM 5.3 Flash), with agents, MCP, web search, file search and code execution turned off. Loaded with `CONFIG_PATH`. |
+| `nearai/librechat.yaml` | NEAR AI endpoint (Qwen3.6, GLM 5.3 Flash, OpenAI and Chutes examples), with agents, MCP, web search, file search and code execution turned off. Loaded with `CONFIG_PATH`. |
 | `nearai/railway.env.example` | Environment variables for the `librechat` service. Real values, including secrets and `NEAR_API_KEY`, are set only in Railway. |
 | `railway.json` (repo root) | Builds the root `Dockerfile` and health-checks `/health`. |
 

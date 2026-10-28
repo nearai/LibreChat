@@ -1,20 +1,8 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import type { TNearAIReceipt } from 'librechat-data-provider';
 
 /** Signature verification result for one NEAR AI completion, stored on the reply's metadata. */
-export interface NearAIReceipt {
-  completionId: string;
-  model: string;
-  status: 'verified' | 'failed';
-  verifiedAt: string;
-  /** `provider_tee`: signed by the model TEE; `gateway`: signed by the attested Gateway only. */
-  signatureKind?: 'provider_tee' | 'gateway';
-  signingAlgo?: string;
-  signingAddress?: string;
-  /** The signed payload; it commits to the SHA-256 of the exact request and response bytes. */
-  signedText?: string;
-  signature?: string;
-  errorCode?: string;
-}
+export type NearAIReceipt = TNearAIReceipt;
 
 /** Collects the receipts of every NEAR AI completion made while producing one reply. */
 export interface NearAIReceiptCollector {

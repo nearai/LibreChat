@@ -1,3 +1,4 @@
+import type { TNearAIAttestationParams } from './types';
 import type { StartupConfigContext } from './config';
 import type { AssistantsEndpoint } from './schemas';
 import { ResourceType } from './accessPermissions';
@@ -46,8 +47,8 @@ export const userPreferences = () => `${user()}/preferences`;
 
 export const balance = () => `${BASE_URL}/api/balance`;
 
-export const nearaiAttestation = (params: { endpoint: string; model: string; refresh?: boolean }) =>
-  `${BASE_URL}/api/nearai/attestation${buildQuery({ ...params, refresh: params.refresh ? '1' : undefined })}`;
+export const nearaiAttestation = (params: TNearAIAttestationParams) =>
+  `${BASE_URL}/api/nearai/attestation${buildQuery({ ...params, refresh: params.refresh ? '1' : undefined, reports: params.reports ? '1' : undefined })}`;
 
 export const userPlugins = () => `${BASE_URL}/api/user/plugins`;
 

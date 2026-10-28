@@ -1,163 +1,111 @@
-import { memo, useRef } from 'react';
-import * as Ariakit from '@ariakit/react';
-import { TooltipAnchor } from '@librechat/client';
+import { memo, useCallback, useRef, useState } from 'react';
 import { dataService, QueryKeys } from 'librechat-data-provider';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ExternalLink, Loader2, RefreshCw, ShieldAlert, ShieldCheck, X } from 'lucide-react';
-import type { TNearAIAttestationResponse } from 'librechat-data-provider';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { OGDialog, TooltipAnchor, useTheme } from '@librechat/client';
+import { Loader2, ShieldAlert, ShieldCheck, ShieldHalf } from 'lucide-react';
 import { useNearAIAttestationQuery } from '~/data-provider/Misc/queries';
 import { useChatContext } from '~/Providers';
-import { modelVerifyLink } from './links';
 import { useLocalize } from '~/hooks';
+import Viewer from './Viewer';
 import { cn } from '~/utils';
 
-type ShieldState = 'checking' | 'verified' | 'failed';
-
-const icons = { checking: Loader2, verified: ShieldCheck, failed: ShieldAlert } as const;
-
+type ShieldState = 'checking' | 'verified' | 'gateway' | 'failed';
+const icons = {
+  checking: Loader2,
+  verified: ShieldCheck,
+  gateway: ShieldHalf,
+  failed: ShieldAlert,
+} as const;
 const iconColors: Record<ShieldState, string> = {
   checking: 'text-text-secondary animate-spin motion-reduce:animate-none',
   verified: 'text-status-success',
+  gateway: 'text-status-warning',
   failed: 'text-status-error',
 };
 
-/** Header shield for NEAR AI endpoints: the server verifies the deployment with the inference SDK. */
-function Shield() {
+export function ModelShield(params: { endpoint: string; model: string }) {
+  return <ModelVerification key={`${params.endpoint}:${params.model}`} {...params} />;
+}
+
+function ModelVerification(params: { endpoint: string; model: string }) {
   const localize = useLocalize();
+  const { resolvedMode } = useTheme();
   const queryClient = useQueryClient();
-  const disclosureRef = useRef<HTMLButtonElement>(null);
-  const popover = Ariakit.usePopoverStore({ placement: 'bottom-end' });
-  const { conversation } = useChatContext();
-  const params = { endpoint: conversation?.endpoint ?? '', model: conversation?.model ?? '' };
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => {
+    setOpen(false);
+    setTimeout(() => triggerRef.current?.focus(), 0);
+  }, []);
   const queryKey = [QueryKeys.nearaiAttestation, params.endpoint, params.model];
-
-  const { data, isError, isFetching } = useNearAIAttestationQuery(params);
-  const reverify = useMutation({
-    mutationFn: () => dataService.getNearAIAttestation({ ...params, refresh: true }),
-    onSuccess: (result: TNearAIAttestationResponse) => queryClient.setQueryData(queryKey, result),
+  const status = useNearAIAttestationQuery(params);
+  const details = useQuery({
+    queryKey: [...queryKey, 'reports'],
+    queryFn: ({ signal }) =>
+      dataService.getNearAIAttestation({ ...params, reports: true, refresh: true }, signal),
+    enabled: open && status.data?.enabled === true,
+    retry: false,
+    refetchOnWindowFocus: false,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey, exact: true }),
   });
-
-  if (data?.enabled === false) {
+  if (status.data?.enabled !== true) {
     return null;
   }
-  if (!data && !isFetching && !isError) {
-    return null;
-  }
-
-  const attestation = data?.enabled === true ? data : undefined;
+  const attestation = status.data;
+  const report = details.data?.enabled === true ? details.data : undefined;
   let state: ShieldState = 'checking';
-  if (reverify.isLoading || (!attestation && isFetching)) {
-    state = 'checking';
-  } else if (attestation?.status === 'verified') {
-    state = 'verified';
-  } else if (attestation?.status === 'failed' || isError) {
+  if (!details.isFetching && !status.isFetching) {
+    const accepted =
+      attestation.status !== 'failed' &&
+      (!report || report.status === attestation.status) &&
+      !status.isError &&
+      !details.isError;
     state = 'failed';
+    if (accepted) state = attestation.status === 'partial' ? 'gateway' : 'verified';
   }
-
   const label = localize(`com_ui_nearai_shield_${state}`);
   const Icon = icons[state];
-
   return (
     <>
       <TooltipAnchor
         description={label}
         render={
-          <Ariakit.PopoverDisclosure
-            ref={disclosureRef}
-            store={popover}
+          <button
+            ref={triggerRef}
+            type="button"
             aria-label={label}
+            aria-haspopup="dialog"
+            aria-expanded={open}
             data-testid="header-nearai-shield"
+            onClick={() => setOpen(true)}
             className="border-border-chrome bg-presentation hover:bg-surface-tertiary aria-expanded:bg-surface-tertiary inline-flex size-9 flex-shrink-0 items-center justify-center rounded-xl border transition-all ease-in-out"
           >
             <Icon aria-hidden="true" className={cn('icon-md', iconColors[state])} />
-          </Ariakit.PopoverDisclosure>
+          </button>
         }
       />
-      <Ariakit.Popover
-        store={popover}
-        gutter={8}
-        portal
-        unmountOnHide
-        finalFocus={disclosureRef}
-        className="border-border-medium bg-surface-secondary text-text-primary rounded-theme-menu-panel z-[200] flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-3 border p-3 shadow-lg focus:outline-none"
-      >
-        <div className="flex items-center gap-2">
-          <Icon aria-hidden="true" className={cn('size-5 shrink-0', iconColors[state])} />
-          <Ariakit.PopoverHeading className="flex-1 text-sm font-semibold">
-            {label}
-          </Ariakit.PopoverHeading>
-          <TooltipAnchor
-            description={localize('com_ui_nearai_shield_verify_again')}
-            render={
-              <button
-                type="button"
-                onClick={() => reverify.mutate()}
-                disabled={state === 'checking'}
-                aria-label={localize('com_ui_nearai_shield_verify_again')}
-                className="hover:bg-surface-hover rounded-lg p-1 disabled:opacity-50"
-              >
-                <RefreshCw
-                  aria-hidden="true"
-                  className={cn(
-                    'size-4',
-                    reverify.isLoading && 'animate-spin motion-reduce:animate-none',
-                  )}
-                />
-              </button>
-            }
+      <OGDialog open={open} onOpenChange={setOpen} triggerRef={triggerRef}>
+        {open && (
+          <Viewer
+            model={params.model}
+            reports={report?.reports}
+            pending={details.isLoading || details.isFetching}
+            isError={details.isError || status.isError || details.data?.enabled === false}
+            onVerify={() => {
+              void details.refetch();
+            }}
+            darkMode={resolvedMode === 'dark'}
+            onClose={close}
           />
-          <Ariakit.PopoverDismiss
-            aria-label={localize('com_ui_close')}
-            className="hover:bg-surface-hover rounded-lg p-1"
-          >
-            <X className="size-4" aria-hidden="true" />
-          </Ariakit.PopoverDismiss>
-        </div>
-        <p className="text-text-secondary text-sm">
-          {localize(`com_ui_nearai_shield_${state}_desc`)}
-        </p>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-          <dt className="text-text-secondary">{localize('com_ui_nearai_shield_model')}</dt>
-          <dd className="font-mono break-all">{params.model}</dd>
-          {attestation && (
-            <>
-              <dt className="text-text-secondary">{localize('com_ui_nearai_shield_checked_at')}</dt>
-              <dd>{new Date(attestation.checkedAt).toLocaleString()}</dd>
-            </>
-          )}
-          {attestation?.errorCode && (
-            <>
-              <dt className="text-text-secondary">{localize('com_ui_nearai_shield_error')}</dt>
-              <dd className="text-status-error font-mono break-all">{attestation.errorCode}</dd>
-            </>
-          )}
-        </dl>
-        {isError && !attestation && (
-          <p role="alert" className="text-status-error text-sm">
-            {localize('com_ui_nearai_shield_unavailable')}
-          </p>
         )}
-        {attestation?.verifyUrl && (
-          <a
-            href={modelVerifyLink(attestation.verifyUrl, params.model)}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={localize('com_ui_nearai_view_details')}
-            className="border-border-medium text-text-primary hover:bg-surface-hover inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium"
-          >
-            {localize('com_ui_nearai_view_details_on')}
-            <img src="/assets/nearai-logo.svg" alt="" className="h-3.5 w-auto dark:hidden" />
-            <img
-              src="/assets/nearai-logo-white.svg"
-              alt=""
-              className="hidden h-3.5 w-auto dark:block"
-            />
-            <ExternalLink className="text-text-secondary size-4" aria-hidden="true" />
-          </a>
-        )}
-      </Ariakit.Popover>
+      </OGDialog>
     </>
   );
+}
+
+function Shield() {
+  const { conversation } = useChatContext();
+  return <ModelShield endpoint={conversation?.endpoint ?? ''} model={conversation?.model ?? ''} />;
 }
 
 export default memo(Shield);
