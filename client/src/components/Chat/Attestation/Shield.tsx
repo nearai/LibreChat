@@ -54,7 +54,7 @@ function ModelVerification(params: { endpoint: string; model: string }) {
   const attestation = status.data;
   const report = details.data?.enabled === true ? details.data : undefined;
   let state: ShieldState = 'checking';
-  if (!details.isFetching && !status.isFetching) {
+  if (!details.isFetching && !status.isLoading) {
     const accepted =
       attestation.status !== 'failed' &&
       (!report || report.status === attestation.status) &&

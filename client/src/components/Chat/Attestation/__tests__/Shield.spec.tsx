@@ -95,6 +95,44 @@ it('requests fresh evidence when Verify again is clicked', async () => {
   await screen.findByTitle('NEAR AI Verification Center');
 });
 
+it.each(['verified', 'partial'] as const)(
+  'keeps the %s shield after closing a successful report while status refresh is pending',
+  async (verdict) => {
+    const model = verdict === 'partial' ? 'openai/gpt-4.1-mini' : status.model;
+    const current = { ...status, model, status: verdict };
+    const reports = [{ ...(verdict === 'partial' ? gatewayReport : modelReport), model }];
+    let resolve!: (value: TNearAIAttestationResponse) => void;
+    let statusRequests = 0;
+    const refresh = new Promise<TNearAIAttestationResponse>((done) => {
+      resolve = done;
+    });
+    jest.mocked(request.get).mockImplementation(async (url) => {
+      if (String(url).includes('reports=1')) return { ...current, reports };
+      if (String(url).includes('/nearai/attestation')) {
+        return ++statusRequests === 1 ? current : refresh;
+      }
+      return { nearaiVerifyUrl: viewerUrl };
+    });
+    const { client } = setup(model);
+    const label =
+      verdict === 'partial'
+        ? 'NEAR AI Gateway verified; model execution is not attested'
+        : 'NEAR AI attestation verified';
+    const shield = await screen.findByRole('button', { name: label });
+    fireEvent.click(shield);
+    const frame = (await screen.findByTitle('NEAR AI Verification Center')) as HTMLIFrameElement;
+    await waitFor(() => expect(frame.src).toContain('cloud-stg.near.ai'));
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(
+      client.isFetching({ queryKey: [QueryKeys.nearaiAttestation, 'NEAR AI', model], exact: true }),
+    ).toBe(1);
+    expect(shield).toHaveAccessibleName(label);
+    await act(async () => resolve({ ...current, status: 'failed' }));
+    await waitFor(() => expect(shield).toHaveAccessibleName('NEAR AI attestation failed'));
+  },
+);
+
 it('shows loading in the first dialog commit before a report arrives', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const observed: string[] = [];
@@ -126,6 +164,9 @@ it('shows loading in the first dialog commit before a report arrives', async () 
     </QueryClientProvider>,
   );
   fireEvent.click(await screen.findByRole('button', { name: 'NEAR AI attestation verified' }));
+  expect(screen.getByTestId('header-nearai-shield')).toHaveAccessibleName(
+    'Checking NEAR AI attestation…',
+  );
   expect(observed.length).toBeGreaterThan(0);
   expect(observed[0]).toContain('Verifying hardware');
   expect(observed.every((text) => !text.includes('viewer is unavailable'))).toBe(true);
