@@ -346,7 +346,11 @@ export async function initializeCustom(
     }
     /** NEAR AI: Chat goes through the inference SDK, which verifies the deployment first. */
     if (options?.configOptions != null && !userProvidesURL && isNearAIBaseURL(baseURL)) {
-      options.configOptions.fetch = createNearAIFetch({ apiKey, baseURL });
+      options.configOptions.fetch = createNearAIFetch({
+        apiKey,
+        baseURL,
+        verificationTimeoutMs: appConfig?.config?.nearai?.verificationTimeoutMs,
+      });
     }
   }
 
