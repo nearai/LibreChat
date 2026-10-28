@@ -335,6 +335,16 @@ export async function initializeCustom(
     });
     options.endpointTokenConfig = endpointTokenConfig;
   } else {
+    // NEAR AI's external OpenAI route rejects the otherwise standard user parameter.
+    const model = model_parameters?.model;
+    if (
+      !userProvidesURL &&
+      isNearAIBaseURL(baseURL) &&
+      typeof model === 'string' &&
+      model.startsWith('openai/')
+    ) {
+      clientOptions.dropParams = [...(endpointConfig.dropParams ?? []), 'user'];
+    }
     const finalClientOptions = {
       modelOptions,
       ...clientOptions,

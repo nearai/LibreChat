@@ -101,7 +101,8 @@ function getSession(credentials: NearAICredentials, model: string, fresh = false
         client: new InferenceClient({
           apiKey: credentials.apiKey,
           baseUrl: credentials.baseURL,
-          attestationCacheTimeToLiveMs: ATTESTATION_TTL_MS,
+          // The outer cache owns the one-hour lifetime; SDK evidence must not expire mid-request.
+          attestationCacheTimeToLiveMs: Infinity,
           e2ee: privateModel,
           signingAlgo: privateModel ? 'ed25519' : 'ecdsa',
         }),
@@ -147,22 +148,34 @@ export async function verifyNearAIModel(
   refresh = false,
   signal?: AbortSignal,
 ): Promise<NearAIAttestationStatus> {
+  return (await verifySession(credentials, model, refresh, signal)).status;
+}
+
+async function verifySession(
+  credentials: NearAICredentials,
+  model: string,
+  refresh: boolean,
+  signal?: AbortSignal,
+): Promise<{ status: NearAIAttestationStatus; client?: InferenceClient }> {
   signal ??= AbortSignal.timeout(
     credentials.verificationTimeoutMs ?? DEFAULT_NEAR_AI_VERIFICATION_TIMEOUT_MS,
   );
   let entry: CachedSession | undefined;
-  let status: NearAIAttestationStatus;
+  let result: { status: NearAIAttestationStatus; client?: InferenceClient };
   try {
     signal.throwIfAborted();
     entry = getSession(credentials, model, refresh);
     const session = await detachOnAbort(entry.pending, signal);
     await detachOnAbort(session.client.verify(model), signal);
     session.checkedAt ??= new Date().toISOString();
-    status = {
-      model,
-      status: session.scope === 'model' ? 'verified' : 'partial',
-      scope: session.scope,
-      checkedAt: session.checkedAt,
+    result = {
+      client: session.client,
+      status: {
+        model,
+        status: session.scope === 'model' ? 'verified' : 'partial',
+        scope: session.scope,
+        checkedAt: session.checkedAt,
+      },
     };
   } catch (error) {
     if (signal.aborted && clients.get(clientKey(credentials, model)) === entry) {
@@ -170,18 +183,20 @@ export async function verifyNearAIModel(
     }
     const code = getVerificationErrorCode(error);
     logger.warn(`[nearai] Attestation failed for ${model}: ${code}`, getSafeErrorMetadata(error));
-    status = {
-      model,
-      status: 'failed',
-      checkedAt: new Date().toISOString(),
-      errorCode: code,
+    result = {
+      status: {
+        model,
+        status: 'failed',
+        checkedAt: new Date().toISOString(),
+        errorCode: code,
+      },
     };
   }
   // Refresh can invalidate the entry before metadata resolves; its own rejection is not a refresh.
   if (!signal.aborted && entry?.invalidated) {
-    return verifyNearAIModel(credentials, model, false, signal);
+    return verifySession(credentials, model, false, signal);
   }
-  return status;
+  return result;
 }
 
 function readModel(body: RequestInit['body']): string | undefined {
@@ -210,12 +225,10 @@ export function createNearAIFetch(credentials: NearAICredentials): NearAIFetch {
       ),
       ...(init?.signal ? [init.signal] : []),
     ]);
-    const status = await verifyNearAIModel(credentials, model, false, signal);
-    if (status.status === 'failed') {
+    const { status, client } = await verifySession(credentials, model, false, signal);
+    if (status.status === 'failed' || !client) {
       return attestationFailedResponse(model, status.errorCode ?? 'unknown');
     }
-    /** The client that sent the request holds its captured bytes, so it must verify the reply. */
-    const { client } = await detachOnAbort(getSession(credentials, model).pending, signal);
     const response = await client.fetch(input, init);
     const collector = getNearAIReceiptCollector();
     if (!collector || !response.ok) {

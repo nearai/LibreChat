@@ -1,5 +1,5 @@
 import { InferenceClient } from '@nearai/inference-sdk/node';
-import { verifyNearAIModel, verifyNearAIModelReports } from './attestation';
+import { createNearAIFetch, verifyNearAIModel, verifyNearAIModelReports } from './attestation';
 
 const model = 'test/model';
 const credentials = (apiKey: string) => ({ apiKey, baseURL: 'http://cloud-stg-api.near.ai/v1' });
@@ -168,4 +168,82 @@ it('discards a timed-out metadata lookup so the next verification can retry', as
     status: 'failed',
     errorCode: 'api.http_status',
   });
+});
+
+it('retains the verified client across TTL expiry without limiting a slow completion', async () => {
+  let now = Date.now();
+  jest.spyOn(Date, 'now').mockImplementation(() => now);
+  let metadataRequests = 0;
+  jest.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    const path = new URL(input instanceof Request ? input.url : String(input)).pathname;
+    if (path.includes('/model/')) {
+      metadataRequests++;
+      return Response.json({ metadata: { providerType: 'external', attestationSupported: false } });
+    }
+    return new Promise(() => {});
+  });
+  const verifiedClients: InferenceClient[] = [];
+  let advance = false;
+  const verify = jest.spyOn(InferenceClient.prototype, 'verify').mockImplementation(async function (
+    this: InferenceClient,
+  ) {
+    verifiedClients.push(this);
+    if (advance) now += 2;
+  });
+  const own = { ...credentials('expiry-between-preflight-and-fetch'), verificationTimeoutMs: 1000 };
+  expect(await verifyNearAIModel(own, model)).not.toHaveProperty('client');
+  const first = verifiedClients[0];
+  const caller = new AbortController();
+  const completion = jest.spyOn(first, 'fetch').mockImplementation(async (_input, init) => {
+    expect(init?.signal).toBe(caller.signal);
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    return Response.json({ id: 'chatcmpl-slow' });
+  });
+  now += 60 * 60 * 1000 - 1;
+  advance = true;
+  const pending = createNearAIFetch(own)(`${own.baseURL}/chat/completions`, {
+    method: 'POST',
+    body: JSON.stringify({ model, messages: [] }),
+    signal: caller.signal,
+  });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const response = await Promise.race([
+      pending,
+      new Promise<'pending'>((resolve) => {
+        timer = setTimeout(() => resolve('pending'), 2000);
+      }),
+    ]);
+    expect(metadataRequests).toBe(1);
+    expect(completion).toHaveBeenCalledTimes(1);
+    expect(response).not.toBe('pending');
+    if (response === 'pending') throw new Error('Chat escaped the verification deadline');
+    expect(response.status).toBe(200);
+    await verifyNearAIModel(own, model);
+    expect(metadataRequests).toBe(2);
+    expect(verify.mock.contexts[2]).not.toBe(first);
+  } finally {
+    clearTimeout(timer);
+    caller.abort();
+    await pending.catch(() => undefined);
+  }
+});
+
+it('blocks Chat within the verification deadline when hardware verification stalls', async () => {
+  const fetch = jest.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    const path = new URL(input instanceof Request ? input.url : String(input)).pathname;
+    return path.includes('/model/')
+      ? Response.json({ metadata: { providerType: 'external', attestationSupported: false } })
+      : new Promise(() => {});
+  });
+  const own = { ...credentials('verification-stalled-before-chat'), verificationTimeoutMs: 20 };
+  const response = await createNearAIFetch(own)(`${own.baseURL}/chat/completions`, {
+    method: 'POST',
+    body: JSON.stringify({ model, messages: [] }),
+  });
+  expect(response.status).toBe(403);
+  expect(await response.json()).toMatchObject({ error: { code: 'nearai_verification_timeout' } });
+  expect(fetch.mock.calls.some(([input]) => String(input).includes('/chat/completions'))).toBe(
+    false,
+  );
 });
