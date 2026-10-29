@@ -331,8 +331,7 @@ it('preserves the signature when current hardware cannot be reached and retries 
     expect.objectContaining({
       reports: [
         receipt.report,
-        expect.objectContaining({ kind: 'model', scope: 'gateway', status: 'unverifiable' }),
-        expect.objectContaining({ kind: 'model', scope: 'model', status: 'unverifiable' }),
+        expect.objectContaining({ kind: 'model', scope: 'unknown', status: 'unverifiable' }),
       ],
     }),
     'https://cloud-stg.near.ai',
@@ -377,8 +376,7 @@ it('replaces previously successful hardware reports with unavailable reports whe
     expect.objectContaining({
       reports: [
         receipt.report,
-        expect.objectContaining({ scope: 'gateway', status: 'unverifiable' }),
-        expect.objectContaining({ scope: 'model', status: 'unverifiable' }),
+        expect.objectContaining({ scope: 'unknown', status: 'unverifiable' }),
       ],
     }),
     'https://cloud-stg.near.ai',
@@ -386,7 +384,7 @@ it('replaces previously successful hardware reports with unavailable reports whe
   expect(get.mock.calls.every(([url]) => !String(url).includes('refresh=1'))).toBe(true);
   const sent = post.mock.calls[0][0].reports;
   expect(sent[1]).not.toHaveProperty('attestation');
-  expect(sent[2]).not.toHaveProperty('attestation');
+  expect(sent).toHaveLength(2);
   expect(document.querySelector('time')).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Close' }));
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());

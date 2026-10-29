@@ -25,7 +25,6 @@ export default function Verification({
   const reply = replyReport(receipt);
   const model = reply?.model ?? receipt.model;
   const params = replyEnvironment(endpoint, receipt);
-  const scope = params?.scope;
   const enabled = !!params;
   const environment = useQuery({
     ...reportQueryOptions(queryClient, params ?? { endpoint: endpoint ?? '', model }),
@@ -43,20 +42,17 @@ export default function Verification({
       return combineReplyReports(reply, environment.data.reports);
     }
     if (!environment.isError && !environment.data) return [reply];
-    const scopes: ('gateway' | 'model')[] =
-      scope === 'gateway' ? ['gateway'] : ['gateway', 'model'];
-    const failures = scopes.map(
-      (scope): TNearAIVerificationReport => ({
-        schemaVersion: 1,
-        kind: 'model',
-        model,
-        scope,
-        status: 'unverifiable',
-        verifiedAt: new Date(environment.errorUpdatedAt || environment.dataUpdatedAt).toISOString(),
-        error: { code: 'nearai_environment_unavailable', message: failureMessage },
-      }),
-    );
-    return combineReplyReports(reply, failures);
+    // A failed report request is not evidence about an additional hardware replica.
+    const unavailable: TNearAIVerificationReport = {
+      schemaVersion: 1,
+      kind: 'model',
+      model,
+      scope: 'unknown',
+      status: 'unverifiable',
+      verifiedAt: new Date(environment.errorUpdatedAt || environment.dataUpdatedAt).toISOString(),
+      error: { code: 'nearai_environment_unavailable', message: failureMessage },
+    };
+    return combineReplyReports(reply, [unavailable]);
   }, [
     reply,
     enabled,
@@ -64,7 +60,6 @@ export default function Verification({
     environment.isError,
     environment.errorUpdatedAt,
     environment.dataUpdatedAt,
-    scope,
     model,
     failureMessage,
   ]);

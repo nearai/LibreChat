@@ -1,8 +1,10 @@
 import React from 'react';
+import axios from 'axios';
 import { RecoilRoot } from 'recoil';
 import { ThemeProvider } from '@librechat/client';
 import { request, QueryKeys } from 'librechat-data-provider';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useUpdateUserKeysMutation } from 'librechat-data-provider/react-query';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { TNearAIAttestationResponse } from 'librechat-data-provider';
 import { report, receipt, modelReport, gatewayReport, viewerUrl } from 'test/fixtures/nearai';
@@ -90,6 +92,36 @@ it('prefetches supported model reports before click, sends them to the iframe, a
   );
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   await waitFor(() => expect(shield).toHaveFocus());
+});
+
+it('recovers verification after a user saves a missing provider key without reloading the page', async () => {
+  jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  const saveKeyLabel = 'Save key';
+  let saved = false;
+  const original = jest.mocked(request.get).getMockImplementation()!;
+  jest.mocked(request.get).mockImplementation(async (url, ...args) => {
+    if (String(url).includes('/nearai/attestation') && !saved) throw new Error('unavailable');
+    return original(url, ...args);
+  });
+  jest.spyOn(axios, 'put').mockImplementation(async () => {
+    saved = true;
+    return { data: {} };
+  });
+  function SaveKey() {
+    const mutation = useUpdateUserKeysMutation();
+    return (
+      <button onClick={() => mutation.mutate({ name: 'NEAR AI', value: 'new-key', expiresAt: '' })}>
+        {saveKeyLabel}
+      </button>
+    );
+  }
+  const { client } = setup(status.model, <SaveKey />);
+  await waitFor(() => expect(client.isFetching()).toBe(0));
+  expect(screen.queryByTestId('header-nearai-shield')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: saveKeyLabel }));
+  fireEvent.click(await screen.findByRole('button', { name: 'NEAR AI attestation verified' }));
+  await screen.findByTitle('NEAR AI Verification Center');
+  expect(reportRequests()).toHaveLength(1);
 });
 
 it('requests fresh evidence when Verify again is clicked', async () => {

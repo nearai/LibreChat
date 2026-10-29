@@ -1,7 +1,10 @@
+import { logger } from '@librechat/data-schemas';
 import type { TStartupConfig } from 'librechat-data-provider';
 import type { Response } from 'express';
-import type { ServerRequest } from '~/types';
+import type { ServerRequest, GetUserKeyValuesFunction } from '~/types';
+import type { NearAICredentials } from './attestation';
 import { getNearAICredentials, verifyNearAIModel, verifyNearAIModelReports } from './attestation';
+import { getSafeErrorMetadata } from '~/utils/errors';
 
 export function getNearAIVerificationConfig(
   verifyUrl: string | undefined,
@@ -18,14 +21,25 @@ export function getNearAIVerificationConfig(
  * `refresh=1` also resets Chat's SDK session to use the current deployment key.
  */
 export async function nearAIAttestationHandler(
-  req: Pick<ServerRequest, 'query' | 'config'>,
+  req: Pick<ServerRequest, 'query' | 'config'> & { user?: { id: string } },
   res: Response,
+  getUserKeyValues?: GetUserKeyValuesFunction,
 ): Promise<Response> {
+  res.set('Cache-Control', 'no-store');
   const { endpoint, model, refresh } = req.query;
   if (typeof endpoint !== 'string' || typeof model !== 'string' || !endpoint || !model) {
     return res.status(400).json({ message: 'endpoint and model are required' });
   }
-  const credentials = getNearAICredentials(req.config, endpoint);
+  let credentials: NearAICredentials | undefined;
+  try {
+    credentials = await getNearAICredentials(req.config, endpoint, {
+      userId: req.user?.id,
+      getUserKeyValues,
+    });
+  } catch (error) {
+    logger.warn('[nearai] Credential resolution failed', getSafeErrorMetadata(error));
+    return res.status(503).json({ error: { code: 'nearai_credentials_unavailable' } });
+  }
   if (!credentials) {
     return res.json({ enabled: false });
   }

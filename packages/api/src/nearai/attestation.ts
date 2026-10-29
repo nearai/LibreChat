@@ -6,6 +6,7 @@ import {
 } from 'librechat-data-provider';
 import type { TNearAIAttestationParams, TNearAIVerificationReport } from 'librechat-data-provider';
 import type { AppConfig } from '@librechat/data-schemas';
+import type { GetUserKeyValuesFunction } from '~/types';
 import type { NearAIReceipt } from './receipts';
 import { createReplyReport, createFailureReport, getVerificationErrorCode } from './report';
 import { getNearAIReceiptCollector, observeCompletionBody } from './receipts';
@@ -285,22 +286,34 @@ async function verifyNearAICompletion(
 
 /**
  * Resolves credentials for a NEAR AI custom endpoint from app config.
- * Returns undefined for other endpoints and for user-provided keys or URLs.
+ * Returns undefined for other endpoints and user-provided URLs. User keys are resolved
+ * through the caller's authenticated user and the same database method used by Chat.
  */
-export function getNearAICredentials(
+export async function getNearAICredentials(
   appConfig: AppConfig | undefined,
   endpoint: string,
-): NearAICredentials | undefined {
+  userKey?: { userId?: string; getUserKeyValues?: GetUserKeyValuesFunction },
+): Promise<NearAICredentials | undefined> {
   let endpointConfig;
   try {
     endpointConfig = getCustomEndpointConfig({ endpoint, appConfig });
   } catch {
     return undefined;
   }
-  const apiKey = extractEnvVariable(endpointConfig?.apiKey ?? '');
+  let apiKey = extractEnvVariable(endpointConfig?.apiKey ?? '');
   const baseURL = extractEnvVariable(endpointConfig?.baseURL ?? '');
-  if (!apiKey || !isNearAIBaseURL(baseURL) || isUserProvided(apiKey)) {
+  if (!apiKey || !isNearAIBaseURL(baseURL)) {
     return undefined;
+  }
+  if (isUserProvided(apiKey)) {
+    if (!userKey?.userId || !userKey.getUserKeyValues) {
+      throw new Error('nearai_credentials_unavailable');
+    }
+    const values = await userKey.getUserKeyValues({ userId: userKey.userId, name: endpoint });
+    if (typeof values.apiKey !== 'string' || !values.apiKey || isUserProvided(values.apiKey)) {
+      throw new Error('nearai_credentials_unavailable');
+    }
+    apiKey = values.apiKey;
   }
   return {
     apiKey,
