@@ -1,30 +1,42 @@
 import { memo, useCallback, useRef, useState } from 'react';
-import { ShieldAlert, ShieldCheck, ShieldHalf } from 'lucide-react';
 import { OGDialog, TooltipAnchor, useTheme } from '@librechat/client';
+import { ShieldAlert, ShieldCheck, ShieldHalf, ShieldQuestion } from 'lucide-react';
 import type { TMessage, TNearAIReceipt } from 'librechat-data-provider';
 import { hoverButtonClasses } from '~/components/Chat/Messages/styles';
 import Verification from './Verification';
 import { getReceipts } from './reports';
 import { useLocalize } from '~/hooks';
 
-type SignatureState = 'model' | 'gateway' | 'failed';
+type SignatureState = 'model' | 'gateway' | 'unverified' | 'failed';
 
-const icons = { model: ShieldCheck, gateway: ShieldHalf, failed: ShieldAlert } as const;
+const icons = {
+  model: ShieldCheck,
+  gateway: ShieldHalf,
+  unverified: ShieldQuestion,
+  failed: ShieldAlert,
+} as const;
 const labels = {
   model: 'com_ui_nearai_signature_model',
   gateway: 'com_ui_nearai_signature_gateway',
+  unverified: 'com_ui_nearai_signature_unverified',
   failed: 'com_ui_nearai_signature_failed',
 } as const;
 
 const iconColors: Record<SignatureState, string> = {
   model: 'text-status-success',
   gateway: 'text-status-warning',
+  unverified: 'text-text-secondary',
   failed: 'text-status-error',
 };
 
 function getState(receipts: TNearAIReceipt[]): SignatureState {
-  if (receipts.some((receipt) => receipt.status !== 'verified')) {
+  const unverified = receipts.filter((receipt) => receipt.status !== 'verified');
+  // A timeout or missing evidence is not a rejected signature.
+  if (unverified.some((receipt) => receipt.report?.status !== 'unverifiable')) {
     return 'failed';
+  }
+  if (unverified.length > 0) {
+    return 'unverified';
   }
   if (receipts.some((receipt) => receipt.signatureKind !== 'provider_tee')) {
     return 'gateway';

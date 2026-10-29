@@ -1,15 +1,30 @@
 import { logger } from '@librechat/data-schemas';
+import { EModelEndpoint, extractEnvVariable } from 'librechat-data-provider';
 import type { TStartupConfig } from 'librechat-data-provider';
+import type { AppConfig } from '@librechat/data-schemas';
 import type { Response } from 'express';
 import type { ServerRequest, GetUserKeyValuesFunction } from '~/types';
 import type { NearAICredentials } from './attestation';
-import { getNearAICredentials, verifyNearAIModel, verifyNearAIModelReports } from './attestation';
+import {
+  isNearAIBaseURL,
+  verifyNearAIModel,
+  getNearAICredentials,
+  verifyNearAIModelReports,
+} from './attestation';
 import { getSafeErrorMetadata } from '~/utils/errors';
 
 export function getNearAIVerificationConfig(
   verifyUrl: string | undefined,
-): Required<Pick<TStartupConfig, 'nearaiVerifyUrl'>> {
-  return { nearaiVerifyUrl: verifyUrl?.trim() || 'https://cloud-stg.near.ai/verify' };
+  appConfig?: AppConfig,
+): Required<Pick<TStartupConfig, 'nearaiVerifyUrl' | 'nearaiEndpoints'>> {
+  const custom = appConfig?.endpoints?.[EModelEndpoint.custom] ?? [];
+  const nearaiEndpoints = custom.flatMap(({ name, baseURL }) =>
+    name && isNearAIBaseURL(extractEnvVariable(baseURL ?? '')) ? [name] : [],
+  );
+  return {
+    nearaiVerifyUrl: verifyUrl?.trim() || 'https://cloud-stg.near.ai/verify',
+    nearaiEndpoints,
+  };
 }
 
 /**

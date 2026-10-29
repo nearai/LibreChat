@@ -234,6 +234,11 @@ describe('Error — reader-facing provider and fallback copy', () => {
       'com_error_model_stream_stalled',
       'The model provider stopped sending the response, and the request timed out. Try again.',
     ],
+    [
+      ErrorTypes.NEAR_AI_ATTESTATION_FAILED,
+      'com_error_nearai_attestation_failed',
+      'NEAR AI hardware verification did not pass, so the message was not sent. Try again.',
+    ],
   ])(
     'localizes a %s error even when it carries older-client fallback prose',
     (type, key, prose) => {

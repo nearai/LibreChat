@@ -5,7 +5,7 @@ import { InferenceClient } from '@nearai/inference-sdk/node';
 import type { AppConfig } from '@librechat/data-schemas';
 import type { GetUserKeyValuesFunction } from '~/types';
 import { isNearAIBaseURL, getNearAICredentials, verifyNearAIModel } from './attestation';
-import { nearAIAttestationHandler } from './handler';
+import { nearAIAttestationHandler, getNearAIVerificationConfig } from './handler';
 
 function config(name: string, baseURL: string): AppConfig {
   return {
@@ -19,6 +19,32 @@ function config(name: string, baseURL: string): AppConfig {
 }
 
 describe('NEAR AI endpoint detection', () => {
+  it('lists configured NEAR AI endpoints by host for the startup shield', () => {
+    process.env.NEARAI_TEST_URL = 'https://cloud-api.near.ai/v1';
+    const appConfig = config('Private', '${NEARAI_TEST_URL}');
+    appConfig.endpoints!.custom!.push(
+      {
+        name: 'OpenAI',
+        baseURL: 'https://api.openai.com/v1',
+        apiKey: 'k',
+        models: { default: ['m'] },
+      },
+      { name: 'Own', baseURL: 'user_provided', apiKey: 'k', models: { default: ['m'] } },
+      {
+        name: 'Keyed',
+        baseURL: 'https://cloud-api.near.ai/v1',
+        apiKey: 'user_provided',
+        models: { default: ['m'] },
+      },
+    );
+    expect(getNearAIVerificationConfig(undefined, appConfig).nearaiEndpoints).toEqual([
+      'Private',
+      'Keyed',
+    ]);
+    expect(getNearAIVerificationConfig(undefined).nearaiEndpoints).toEqual([]);
+    delete process.env.NEARAI_TEST_URL;
+  });
+
   it('does not enable verification for a third-party endpoint named NEAR AI', async () => {
     await expect(
       getNearAICredentials(config('NEAR AI', 'https://api.openai.com/v1'), 'NEAR AI'),

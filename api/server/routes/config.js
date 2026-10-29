@@ -306,7 +306,7 @@ router.get('/', async function (req, res) {
       ...preLoginPayload,
       ...publicSharePayload,
       ...buildPostLoginPayload(appConfig),
-      ...getNearAIVerificationConfig(process.env.NEAR_AI_VERIFY_URL),
+      ...getNearAIVerificationConfig(process.env.NEAR_AI_VERIFY_URL, appConfig),
       ...getConversationTitleCapabilities(appConfig?.interfaceConfig),
       conversationListLimits,
       sharedLinksSnapshotFilesEnabled: sharedLinksEnabled && isFileSnapshotEnabled(appConfig),

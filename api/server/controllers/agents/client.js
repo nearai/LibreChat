@@ -166,7 +166,7 @@ const {
   hasYouTubeVideoParts,
   appendYouTubeVideoParts,
   resolveGoogleVideoError,
-  resolveLangChainError,
+  getUserFacingRequestError,
   resolveYouTubeInjectionConfig,
   decrementPendingRequest,
   maybePrewarmCodeSandbox,
@@ -226,7 +226,6 @@ const {
   UsageEvents,
   Permissions,
   VisionModes,
-  ErrorTypes,
   ContentTypes,
   FileSources,
   ApprovalEvents,
@@ -237,7 +236,6 @@ const {
   isAgentsEndpoint,
   isEphemeralAgentId,
   removeNullishValues,
-  stripLangChainTroubleshootingUrl,
   DEFAULT_MEMORY_MAX_INPUT_TOKENS,
 } = require('librechat-data-provider');
 const { filterFilesByAgentAccess } = require('~/server/services/Files/permissions');
@@ -354,35 +352,6 @@ function captureRunContextMeta(client) {
     fadingTiers: source?.getFadingTiers?.(),
     getEncoding: () => client.getEncoding(),
   });
-}
-
-/**
- * User-visible text for a failed run. LangChain classifies provider errors by mutating
- * `error.message` with a docs URL, so a classified failure becomes typed copy the client localizes
- * and everything else keeps the provider's own wording with that URL removed. The untouched error
- * still reaches the logs through `getSafeErrorMetadata`.
- */
-function getUserFacingRequestError(baseMessage, error, appConfig) {
-  /** Carries no model or user content, so it is safe under every filter. */
-  if (error?.name === 'ManualSummarizationSkippedError') {
-    return JSON.stringify({ type: ErrorTypes.COMPACTION_SKIPPED, reason: error.reason });
-  }
-  const protectionEnabled = hasModelBoundContentProtection(
-    appConfig?.filters,
-    appConfig?.messageFilter?.pii,
-  );
-  if (protectionEnabled || !error?.message) {
-    return baseMessage;
-  }
-  const typedError = resolveLangChainError(error);
-  if (typedError != null) {
-    return typedError;
-  }
-  const message = stripLangChainTroubleshootingUrl(error.message);
-  if (!message) {
-    return baseMessage;
-  }
-  return `${baseMessage}: ${message}`;
 }
 
 class AgentClient extends BaseClient {

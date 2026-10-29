@@ -1,6 +1,7 @@
 import { logger } from '@librechat/data-schemas';
 import { AttestationClient, InferenceClient, VerificationError } from '@nearai/inference-sdk/node';
 import {
+  ErrorTypes,
   extractEnvVariable,
   DEFAULT_NEAR_AI_VERIFICATION_TIMEOUT_MS,
 } from 'librechat-data-provider';
@@ -43,7 +44,8 @@ export interface NearAICredentials {
 }
 
 /** Stable error code the client can recognize when attestation blocks a Chat request. */
-export const NEAR_AI_ATTESTATION_FAILED = 'nearai_attestation_failed';
+export const NEAR_AI_ATTESTATION_FAILED: ErrorTypes.NEAR_AI_ATTESTATION_FAILED =
+  ErrorTypes.NEAR_AI_ATTESTATION_FAILED;
 
 /**
  * A local 403 in the OpenAI error format. Returning it, rather than throwing, keeps the
@@ -236,7 +238,13 @@ export function createNearAIFetch(credentials: NearAICredentials): NearAIFetch {
       return response;
     }
     return observeCompletionBody(response, (completionId) =>
-      collector.add(verifyNearAICompletion(client, model, completionId)),
+      collector.add(verifyNearAICompletion(client, model, completionId), () =>
+        failedReceipt(
+          new DOMException('Signature verification timed out', 'TimeoutError'),
+          completionId,
+          model,
+        ),
+      ),
     );
   };
 }
@@ -267,21 +275,25 @@ async function verifyNearAICompletion(
       ...(report.ok ? { report: report.value } : {}),
     };
   } catch (error) {
-    const code = getVerificationErrorCode(error);
-    logger.warn(
-      `[nearai] Signature verification failed for ${completionId}: ${code}`,
-      getSafeErrorMetadata(error),
-    );
-    const verifiedAt = new Date().toISOString();
-    return {
-      completionId,
-      model,
-      status: 'failed',
-      verifiedAt,
-      errorCode: code,
-      report: createFailureReport(error, completionId, model, verifiedAt),
-    };
+    return failedReceipt(error, completionId, model);
   }
+}
+
+function failedReceipt(error: unknown, completionId: string, model: string): NearAIReceipt {
+  const code = getVerificationErrorCode(error);
+  logger.warn(
+    `[nearai] Signature verification failed for ${completionId}: ${code}`,
+    getSafeErrorMetadata(error),
+  );
+  const verifiedAt = new Date().toISOString();
+  return {
+    completionId,
+    model,
+    status: 'failed',
+    verifiedAt,
+    errorCode: code,
+    report: createFailureReport(error, completionId, model, verifiedAt),
+  };
 }
 
 /**

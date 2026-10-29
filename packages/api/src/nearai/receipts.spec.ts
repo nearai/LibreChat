@@ -111,3 +111,24 @@ it('keeps Gateway-only reports valid after a real MongoDB round trip', async () 
   expect(JSON.stringify(saved.metadata?.nearai)).not.toContain('null');
   expect(JSON.stringify(saved.metadata?.nearai)).not.toContain('PRIVATE');
 });
+
+it('keeps finished receipts and records late ones as timed out instead of dropping them all', async () => {
+  const finished = {
+    completionId: 'done',
+    model: 'm',
+    status: 'verified',
+    verifiedAt: 'now',
+  } as const;
+  const late: NearAIReceipt = {
+    completionId: 'late',
+    model: 'm',
+    status: 'failed',
+    verifiedAt: 'x',
+  };
+  const collector = createNearAIReceiptCollector();
+  collector.add(Promise.resolve(finished), () => ({ ...late, completionId: 'unused' }));
+  collector.add(new Promise(() => {}), () => late);
+  collector.add(Promise.reject(new Error('lost')), () => ({ ...late, completionId: 'rejected' }));
+  collector.add(new Promise(() => {}));
+  expect(await collector.settle(10)).toEqual([finished, late]);
+});

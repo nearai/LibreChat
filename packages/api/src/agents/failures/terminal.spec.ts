@@ -1,5 +1,6 @@
 import { errors } from 'undici';
 import { createTerminalRunErrorObserver, getUpstreamModelErrorMetadata } from './terminal';
+import { resolveNearAIAttestationError } from '../errors';
 
 describe('terminal agent-run error logging', () => {
   it('logs stable upstream metadata and deterministic trace correlation', () => {
@@ -371,5 +372,37 @@ describe('terminal agent-run error logging', () => {
       errorOrigin: 'model_provider',
       errorType: '_OTHER',
     });
+  });
+});
+
+describe('NEAR AI attestation failures', () => {
+  it.each([false, true])(
+    'classifies a blocked request without provider text (protection %s)',
+    (protectionEnabled) => {
+      const observer = createTerminalRunErrorObserver({
+        logger: { error: jest.fn() },
+        source: '[Agent API]',
+        protectionEnabled,
+      });
+      const providerError = Object.assign(
+        new Error(
+          '403 NEAR AI attestation failed for model (quote.invalid). The message was not sent.',
+        ),
+        { status: 403, error: { type: 'nearai_attestation_failed', code: 'quote.invalid' } },
+      );
+      observer.modelCallback.handleLLMError(providerError);
+      const text = observer.getUserFacingError(
+        new Error('graph failed', { cause: providerError }),
+        () => 'fallback',
+      );
+      expect(text).toContain(JSON.stringify({ type: 'nearai_attestation_failed' }));
+      expect(text).not.toContain('quote.invalid');
+    },
+  );
+
+  it('leaves other 403 rejections on the generic upstream path', () => {
+    expect(resolveNearAIAttestationError(Object.assign(new Error('403'), { status: 403 }))).toBe(
+      undefined,
+    );
   });
 });

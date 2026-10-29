@@ -482,3 +482,56 @@ it('accepts restored Gateway reports whose absent model was stored as BSON null'
     'https://cloud-stg.near.ai',
   );
 });
+
+it('shows an unverifiable reply signature as unverified rather than rejected', async () => {
+  const timedOut: TNearAIReceipt = {
+    completionId: receipt.completionId,
+    model: receipt.model,
+    status: 'failed',
+    verifiedAt: receipt.verifiedAt,
+    errorCode: 'nearai_verification_timeout',
+    report: {
+      schemaVersion: 1,
+      kind: 'reply',
+      completionId: receipt.completionId,
+      model: receipt.model,
+      scope: 'unknown',
+      status: 'unverifiable',
+      verifiedAt: receipt.verifiedAt,
+      error: { code: 'nearai_verification_timeout', message: 'Timed out.' },
+    },
+  };
+  const { rerender, client } = setup([timedOut]);
+  expect(
+    screen.getByRole('button', { name: 'Reply signature could not be verified' }),
+  ).toBeInTheDocument();
+  rerender(
+    <QueryClientProvider client={client}>
+      <RecoilRoot>
+        <ThemeProvider initialTheme="light">
+          <Signature
+            message={{
+              messageId: 'message-2',
+              conversationId: 'conversation-1',
+              parentMessageId: 'parent-1',
+              endpoint: 'NEAR AI',
+              sender: 'NEAR AI',
+              text: 'Reply',
+              isCreatedByUser: false,
+              metadata: {
+                nearai: {
+                  receipts: [
+                    timedOut,
+                    { ...timedOut, report: { ...timedOut.report!, status: 'failed' } },
+                  ],
+                },
+              },
+            }}
+            isLast={true}
+          />
+        </ThemeProvider>
+      </RecoilRoot>
+    </QueryClientProvider>,
+  );
+  expect(screen.getByRole('button', { name: 'Reply signature check failed' })).toBeInTheDocument();
+});

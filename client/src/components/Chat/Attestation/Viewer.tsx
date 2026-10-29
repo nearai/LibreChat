@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { RotateCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   Button,
   Spinner,
@@ -13,9 +14,10 @@ import type { ReactNode } from 'react';
 import type { TranslationKeys } from '~/hooks/useLocalize';
 import { connectVerificationReport, verificationViewerUrl } from './connection';
 import { useGetStartupConfig } from '~/data-provider/Endpoints/queries';
+import useClockFormat from '~/hooks/useClockFormat';
+import { cn, getMessageTimestamp } from '~/utils';
 import { receiptVerifyLink } from './links';
 import { useLocalize } from '~/hooks';
-import { cn } from '~/utils';
 
 export default function Viewer({
   model,
@@ -45,6 +47,9 @@ export default function Viewer({
   children?: ReactNode;
 }) {
   const localize = useLocalize();
+  const { i18n } = useTranslation();
+  const hour12 = useClockFormat();
+  const checkedAt = getMessageTimestamp(hardwareVerifiedAt, i18n.language, hour12);
   const query = useGetStartupConfig();
   // The dialog portal may mount after this component's first effect.
   const [iframe, setIframe] = useState<HTMLIFrameElement | null>(null);
@@ -109,10 +114,10 @@ export default function Viewer({
             )}
         </OGDialogDescription>
       </OGDialogHeader>
-      {!loading && !unavailable && hardwareVerifiedAt && (
+      {!loading && !unavailable && checkedAt && (
         <p className="text-text-secondary text-xs">
           {localize('com_ui_nearai_hardware_checked_at')}{' '}
-          <time dateTime={hardwareVerifiedAt}>{new Date(hardwareVerifiedAt).toLocaleString()}</time>
+          <time dateTime={checkedAt.iso}>{checkedAt.absolute}</time>
         </p>
       )}
       {children}

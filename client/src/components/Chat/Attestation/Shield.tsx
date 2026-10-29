@@ -5,6 +5,7 @@ import { Loader2, ShieldAlert, ShieldCheck, ShieldHalf } from 'lucide-react';
 import { useQuery, useMutation, useIsMutating, useQueryClient } from '@tanstack/react-query';
 import { reportKey, prefetchReport, reportQueryOptions } from './queries';
 import { useNearAIAttestationQuery } from '~/data-provider/Misc/queries';
+import { useGetStartupConfig } from '~/data-provider/Endpoints/queries';
 import { hardwareVerifiedAt } from './reports';
 import { useChatContext } from '~/Providers';
 import { useLocalize } from '~/hooks';
@@ -46,6 +47,7 @@ function ModelVerification(params: { endpoint: string; model: string }) {
     setTimeout(() => triggerRef.current?.focus(), 0);
   }, []);
   const queryKey = [QueryKeys.nearaiAttestation, params.endpoint, params.model];
+  const startupConfig = useGetStartupConfig();
   const status = useNearAIAttestationQuery(params, {
     structuralSharing: (previous, next) => {
       // Failed status responses omit capability; keep the last known scope and the failed verdict.
@@ -91,17 +93,19 @@ function ModelVerification(params: { endpoint: string; model: string }) {
     if (status.data?.enabled !== true) return;
     void prefetchReport(queryClient, { endpoint: params.endpoint, model: params.model, scope });
   }, [queryClient, params.endpoint, params.model, status.data?.enabled, scope]);
-  if (status.data?.enabled !== true) {
+  const attestation = status.data?.enabled === true ? status.data : undefined;
+  // A configured NEAR AI endpoint shows its first check instead of appearing only once it ends.
+  const expected = startupConfig.data?.nearaiEndpoints?.includes(params.endpoint) === true;
+  if (!attestation && !(expected && status.isInitialLoading)) {
     return null;
   }
-  const attestation = status.data;
   const report = details.data?.enabled === true ? details.data : undefined;
   let state: ShieldState = 'checking';
-  if (!status.isLoading && !reverifying) {
+  if (attestation && !reverifying) {
+    // Unverifiable evidence is shown in the report; only rejected evidence turns the shield red.
     const failed =
       attestation.status === 'failed' ||
       status.isError ||
-      report?.status === 'failed' ||
       report?.reports?.some((entry) => entry.status === 'failed');
     state = attestation.status === 'partial' ? 'gateway' : 'verified';
     if (failed) state = 'failed';
@@ -119,8 +123,9 @@ function ModelVerification(params: { endpoint: string; model: string }) {
             aria-label={label}
             aria-haspopup="dialog"
             aria-expanded={open}
+            aria-disabled={!attestation}
             data-testid="header-nearai-shield"
-            onClick={() => setOpen(true)}
+            onClick={() => attestation && setOpen(true)}
             className="border-border-chrome bg-presentation hover:bg-surface-tertiary aria-expanded:bg-surface-tertiary inline-flex size-9 flex-shrink-0 items-center justify-center rounded-xl border transition-all ease-in-out"
           >
             <Icon aria-hidden="true" className={cn('icon-md', iconColors[state])} />

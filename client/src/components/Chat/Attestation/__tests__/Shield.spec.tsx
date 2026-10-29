@@ -377,7 +377,10 @@ it.each(['failed', 'unverifiable'] as const)(
       await new Promise((done) => setTimeout(done, 20));
     });
     expect(reportRequests()).toHaveLength(2);
-    expect(shield).toHaveAccessibleName('NEAR AI attestation failed');
+    // Only rejected evidence turns the shield red; unverifiable stays on the chat status.
+    expect(shield).toHaveAccessibleName(
+      verdict === 'failed' ? 'NEAR AI attestation failed' : 'NEAR AI attestation verified',
+    );
     const post = jest.spyOn(frame.contentWindow!, 'postMessage');
     act(() =>
       window.dispatchEvent(
@@ -966,3 +969,43 @@ it('keeps Gateway scope after a failed status refresh without requesting a secon
   );
   expect(reportRequests().filter(([url]) => String(url).includes('model=openai'))).toHaveLength(2);
 });
+
+it.each([
+  ['NEAR AI', true],
+  ['OpenAI', false],
+] as const)(
+  'shows a disabled checking shield for %s before the first status only when configured as NEAR AI',
+  async (endpoint, configured) => {
+    let resolve!: (value: TNearAIAttestationResponse) => void;
+    const pending = new Promise<TNearAIAttestationResponse>((done) => {
+      resolve = done;
+    });
+    jest.mocked(request.get).mockImplementation(async (url) => {
+      if (String(url).includes('reports=1')) return { ...status, reports: [modelReport] };
+      if (String(url).includes('/nearai/attestation')) return pending;
+      return { nearaiVerifyUrl: viewerUrl, nearaiEndpoints: ['NEAR AI'] };
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <RecoilRoot>
+          <ThemeProvider initialTheme="light">
+            <ModelShield endpoint={endpoint} model="z-ai/glm-5.3-flash" />
+          </ThemeProvider>
+        </RecoilRoot>
+      </QueryClientProvider>,
+    );
+    if (!configured) {
+      await waitFor(() => expect(client.isFetching()).toBe(1));
+      expect(screen.queryByTestId('header-nearai-shield')).not.toBeInTheDocument();
+      return;
+    }
+    const shield = await screen.findByRole('button', { name: 'Checking NEAR AI attestation…' });
+    expect(shield).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(shield);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await act(async () => resolve(status));
+    await waitFor(() => expect(shield).toHaveAccessibleName('NEAR AI attestation verified'));
+    expect(shield).toHaveAttribute('aria-disabled', 'false');
+  },
+);
