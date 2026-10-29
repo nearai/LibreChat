@@ -16,6 +16,7 @@ import { RowMountProvider, useProgressiveRowMount } from '~/hooks/Messages';
 import { useChatSurface } from '~/components/Chat/Subagents/surface';
 import useThreadRows from '~/hooks/Messages/useThreadRows';
 import PendingSteers from './Content/Parts/PendingSteers';
+import ReplyPrefetch from '../Attestation/Prefetch';
 import { autoScrollAtom } from '~/store/autoScroll';
 import { FLAT_THREAD, ThreadList } from './Thread';
 import { fontSizeAtom } from '~/store/fontSize';
@@ -133,6 +134,7 @@ function MessagesViewContent({
   const overlayConversationId = conversationId ?? Constants.NEW_CONVO;
   return (
     <>
+      <ReplyPrefetch messages={messages} isSubmitting={isSubmitting} />
       <div className="relative flex-1 overflow-hidden overflow-y-auto">
         <div className="relative h-full">
           <div

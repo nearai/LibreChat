@@ -5,11 +5,12 @@ import userEvent from '@testing-library/user-event';
 import { OGDialog, ThemeProvider } from '@librechat/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { TMessage, TNearAIReceipt } from 'librechat-data-provider';
+import type { TMessage, TNearAIReceipt, TNearAIAttestationResponse } from 'librechat-data-provider';
 import { receipt, modelReport, gatewayReport, viewerUrl } from 'test/fixtures/nearai';
 import { startupConfigKey } from '~/data-provider/Endpoints/queries';
 import Verification from '../Verification';
 import Signature from '../Signature';
+import Prefetch from '../Prefetch';
 
 jest.mock('~/hooks', () => ({
   useLocalize: jest.requireActual('~/hooks/useLocalize').default,
@@ -19,6 +20,7 @@ function setup(
   receipts: TNearAIReceipt[] = [receipt],
   darkMode = false,
   provenance: Partial<TMessage> = {},
+  prefetch = false,
 ) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const message: TMessage = {
@@ -36,6 +38,7 @@ function setup(
     <QueryClientProvider client={client}>
       <RecoilRoot>
         <ThemeProvider initialTheme={darkMode ? 'dark' : 'light'}>
+          {prefetch && <Prefetch messages={[message]} isSubmitting={false} />}
           <Signature message={message} isLast={true} />
         </ThemeProvider>
       </RecoilRoot>
@@ -123,6 +126,88 @@ it('reuses startup configuration while fetching current hardware only after open
   expect(request.get).toHaveBeenCalledTimes(1);
   expect(jest.mocked(request.get).mock.calls[0][0]).toContain('reports=1');
   expect(jest.mocked(request.get).mock.calls[0][0]).not.toContain('refresh=1');
+});
+
+it('opens a reply using the hardware report prefetched by the message list', async () => {
+  setup([receipt], false, {}, true);
+  await waitFor(() => expect(request.get).toHaveBeenCalledTimes(1));
+  const iframe = await openFrame();
+  receive(iframe, 'NEAR_AI_VERIFICATION_CENTER_READY');
+  expect(
+    jest.mocked(request.get).mock.calls.filter(([url]) => String(url).includes('reports=1')),
+  ).toHaveLength(1);
+});
+
+it('joins an unfinished message-list prefetch when the reply shield is clicked', async () => {
+  let resolve!: (value: TNearAIAttestationResponse) => void;
+  const pending = new Promise<TNearAIAttestationResponse>((done) => {
+    resolve = done;
+  });
+  const original = jest.mocked(request.get).getMockImplementation()!;
+  jest
+    .mocked(request.get)
+    .mockImplementation((url, ...args) =>
+      String(url).includes('reports=1') ? pending : original(url, ...args),
+    );
+  setup([receipt], false, {}, true);
+  await waitFor(() => expect(request.get).toHaveBeenCalledTimes(1));
+  fireEvent.click(screen.getByTestId('nearai-signature-button'));
+  expect(screen.getByText('Verifying hardware…')).toBeVisible();
+  await act(async () =>
+    resolve({
+      enabled: true,
+      model: receipt.model,
+      status: 'verified',
+      checkedAt: modelReport.verifiedAt,
+      reports: [modelReport, gatewayReport],
+    }),
+  );
+  await screen.findByTitle('NEAR AI Verification Center');
+  expect(
+    jest.mocked(request.get).mock.calls.filter(([url]) => String(url).includes('reports=1')),
+  ).toHaveLength(1);
+});
+
+it('reuses reply hardware for five minutes and fetches once after expiry', async () => {
+  setup();
+  const requests = () =>
+    jest.mocked(request.get).mock.calls.filter(([url]) => String(url).includes('reports=1'));
+  await openFrame();
+  expect(requests()).toHaveLength(1);
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  await openFrame();
+  expect(requests()).toHaveLength(1);
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 300_001);
+  await openFrame();
+  expect(requests()).toHaveLength(2);
+});
+
+it('displays the earliest hardware time rather than the saved signature time after the viewer is ready', async () => {
+  const checkedAt = '2026-10-28T12:00:00.000Z';
+  const original = jest.mocked(request.get).getMockImplementation()!;
+  jest.mocked(request.get).mockImplementation(async (url, ...args) =>
+    String(url).includes('reports=1')
+      ? {
+          enabled: true,
+          model: receipt.model,
+          status: 'verified',
+          checkedAt: '2026-10-28T14:00:00.000Z',
+          reports: [
+            { ...gatewayReport, verifiedAt: '2026-10-28T13:00:00.000Z' },
+            { ...modelReport, verifiedAt: checkedAt },
+          ],
+        }
+      : original(url, ...args),
+  );
+  setup();
+  const frame = await openFrame();
+  expect(document.querySelector('time')).not.toBeInTheDocument();
+  receive(frame, 'NEAR_AI_VERIFICATION_CENTER_READY');
+  expect(document.querySelector('time')).toHaveAttribute('datetime', checkedAt);
+  expect(document.querySelector('time')).not.toHaveAttribute('datetime', receipt.verifiedAt);
 });
 
 it('connects when the dialog portal mounts after the report and config are ready', async () => {
@@ -302,6 +387,14 @@ it('replaces previously successful hardware reports with unavailable reports whe
   const sent = post.mock.calls[0][0].reports;
   expect(sent[1]).not.toHaveProperty('attestation');
   expect(sent[2]).not.toHaveProperty('attestation');
+  expect(document.querySelector('time')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  const reopened = await openFrame();
+  expect(get.mock.calls.filter(([url]) => String(url).includes('reports=1'))).toHaveLength(3);
+  const reopenedPost = jest.spyOn(reopened.contentWindow!, 'postMessage');
+  receive(reopened, 'NEAR_AI_VERIFICATION_CENTER_READY');
+  expect(reopenedPost.mock.calls[0][0].reports[1].status).toBe('unverifiable');
 });
 
 it('requests Gateway evidence only for a Gateway-signed reply and keeps it partial', async () => {

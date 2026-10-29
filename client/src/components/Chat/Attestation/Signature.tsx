@@ -4,29 +4,23 @@ import { OGDialog, TooltipAnchor, useTheme } from '@librechat/client';
 import type { TMessage, TNearAIReceipt } from 'librechat-data-provider';
 import { hoverButtonClasses } from '~/components/Chat/Messages/styles';
 import Verification from './Verification';
+import { getReceipts } from './reports';
 import { useLocalize } from '~/hooks';
 
 type SignatureState = 'model' | 'gateway' | 'failed';
 
 const icons = { model: ShieldCheck, gateway: ShieldHalf, failed: ShieldAlert } as const;
+const labels = {
+  model: 'com_ui_nearai_signature_model',
+  gateway: 'com_ui_nearai_signature_gateway',
+  failed: 'com_ui_nearai_signature_failed',
+} as const;
 
 const iconColors: Record<SignatureState, string> = {
   model: 'text-status-success',
   gateway: 'text-status-warning',
   failed: 'text-status-error',
 };
-
-function getReceipts(message: TMessage): TNearAIReceipt[] {
-  if (
-    message.isUserSubmitted ||
-    message.userSubmittedPaths?.length ||
-    message.userSubmittedMessageFieldPaths?.length
-  ) {
-    return [];
-  }
-  const nearai = message.metadata?.nearai as { receipts?: TNearAIReceipt[] } | undefined;
-  return Array.isArray(nearai?.receipts) ? nearai.receipts : [];
-}
 
 function getState(receipts: TNearAIReceipt[]): SignatureState {
   if (receipts.some((receipt) => receipt.status !== 'verified')) {
@@ -54,7 +48,7 @@ function Signature({ message, isLast }: { message: TMessage; isLast: boolean }) 
   }
 
   const state = getState(receipts);
-  const label = localize(`com_ui_nearai_signature_${state}`);
+  const label = localize(labels[state]);
   const Icon = icons[state];
 
   return (

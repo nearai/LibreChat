@@ -1,6 +1,43 @@
-import type { TNearAIVerificationReport } from 'librechat-data-provider';
+import type {
+  TNearAIAttestationResponse,
+  TNearAIVerificationReport,
+} from 'librechat-data-provider';
+import { combineReplyReports, reportStaleTime, hardwareVerifiedAt } from '../reports';
 import { report, modelReport, gatewayReport } from 'test/fixtures/nearai';
-import { combineReplyReports } from '../reports';
+
+const success: TNearAIAttestationResponse = {
+  enabled: true,
+  model: modelReport.model!,
+  status: 'verified',
+  checkedAt: modelReport.verifiedAt,
+  reports: [modelReport, gatewayReport],
+};
+
+it.each<[string, TNearAIAttestationResponse | undefined, 'success' | 'loading' | 'error', number]>([
+  ['verified and partial reports', success, 'success', 300_000],
+  ['Gateway only', { ...success, status: 'partial', reports: [gatewayReport] }, 'success', 300_000],
+  ['failed result', { ...success, status: 'failed' }, 'success', 0],
+  ['failed report', { ...success, reports: [{ ...modelReport, status: 'failed' }] }, 'success', 0],
+  [
+    'unverifiable report',
+    { ...success, reports: [{ ...modelReport, status: 'unverifiable' }] },
+    'success',
+    0,
+  ],
+  ['empty reports', { ...success, reports: [] }, 'success', 0],
+  ['missing reports', { ...success, reports: undefined }, 'success', 0],
+  ['disabled endpoint', { enabled: false }, 'success', 0],
+  ['no data', undefined, 'loading', 0],
+  ['failed refresh retaining old data', success, 'error', 0],
+])('reuses %s only when the last request succeeded', (_name, data, status, expected) => {
+  expect(reportStaleTime(data, status)).toBe(expected);
+});
+
+it('uses the earliest hardware verification time, excluding the saved signature', () => {
+  expect(hardwareVerifiedAt([gatewayReport, modelReport, report])).toBe(modelReport.verifiedAt);
+  expect(hardwareVerifiedAt([report])).toBeUndefined();
+  expect(hardwareVerifiedAt()).toBeUndefined();
+});
 
 it('combines matching model evidence and Gateway evidence while preserving the saved signature and time', () => {
   const current = {

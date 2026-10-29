@@ -1,9 +1,11 @@
-import { memo, useCallback, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { dataService, QueryKeys } from 'librechat-data-provider';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { OGDialog, TooltipAnchor, useTheme } from '@librechat/client';
 import { Loader2, ShieldAlert, ShieldCheck, ShieldHalf } from 'lucide-react';
+import { useQuery, useMutation, useIsMutating, useQueryClient } from '@tanstack/react-query';
+import { reportKey, prefetchReport, reportQueryOptions } from './queries';
 import { useNearAIAttestationQuery } from '~/data-provider/Misc/queries';
+import { hardwareVerifiedAt } from './reports';
 import { useChatContext } from '~/Providers';
 import { useLocalize } from '~/hooks';
 import Viewer from './Viewer';
@@ -15,6 +17,12 @@ const icons = {
   verified: ShieldCheck,
   gateway: ShieldHalf,
   failed: ShieldAlert,
+} as const;
+const labels = {
+  checking: 'com_ui_nearai_shield_checking',
+  verified: 'com_ui_nearai_shield_verified',
+  gateway: 'com_ui_nearai_shield_gateway',
+  failed: 'com_ui_nearai_shield_failed',
 } as const;
 const iconColors: Record<ShieldState, string> = {
   checking: 'text-text-secondary animate-spin motion-reduce:animate-none',
@@ -38,32 +46,67 @@ function ModelVerification(params: { endpoint: string; model: string }) {
     setTimeout(() => triggerRef.current?.focus(), 0);
   }, []);
   const queryKey = [QueryKeys.nearaiAttestation, params.endpoint, params.model];
-  const status = useNearAIAttestationQuery(params);
-  const details = useQuery({
-    queryKey: [...queryKey, 'reports'],
-    queryFn: ({ signal }) =>
-      dataService.getNearAIAttestation({ ...params, reports: true, refresh: true }, signal),
-    enabled: open && status.data?.enabled === true,
-    retry: false,
-    refetchOnWindowFocus: false,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey, exact: true }),
+  const status = useNearAIAttestationQuery(params, {
+    structuralSharing: (previous, next) => {
+      // Failed status responses omit capability; keep the last known scope and the failed verdict.
+      if (next.enabled && next.status === 'failed' && !next.scope && previous?.enabled) {
+        return {
+          ...next,
+          scope: previous.scope ?? (previous.status === 'partial' ? 'gateway' : undefined),
+        };
+      }
+      return next;
+    },
   });
+  const scope =
+    status.data?.enabled && (status.data.scope === 'gateway' || status.data.status === 'partial')
+      ? 'gateway'
+      : undefined;
+  const options = reportQueryOptions(queryClient, { ...params, scope });
+  const reportsKey = reportKey(params);
+  const reverifying = useIsMutating({ mutationKey: reportsKey, exact: true }) > 0;
+  const reverify = useMutation({
+    mutationKey: reportsKey,
+    mutationFn: () =>
+      queryClient.fetchQuery({
+        ...options,
+        staleTime: 0,
+        // Keep explicit verification running when switching models unmounts the shield.
+        queryFn: () =>
+          dataService.getNearAIAttestation({ ...params, scope, reports: true, refresh: true }),
+      }),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: reportsKey });
+      await queryClient.invalidateQueries({ queryKey: reportsKey, refetchType: 'none' });
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey, exact: true });
+    },
+  });
+  const details = useQuery({
+    ...options,
+    enabled: open && status.data?.enabled === true,
+  });
+  useEffect(() => {
+    if (status.data?.enabled !== true) return;
+    void prefetchReport(queryClient, { endpoint: params.endpoint, model: params.model, scope });
+  }, [queryClient, params.endpoint, params.model, status.data?.enabled, scope]);
   if (status.data?.enabled !== true) {
     return null;
   }
   const attestation = status.data;
   const report = details.data?.enabled === true ? details.data : undefined;
   let state: ShieldState = 'checking';
-  if (!details.isFetching && !status.isLoading) {
-    const accepted =
-      attestation.status !== 'failed' &&
-      (!report || report.status === attestation.status) &&
-      !status.isError &&
-      !details.isError;
-    state = 'failed';
-    if (accepted) state = attestation.status === 'partial' ? 'gateway' : 'verified';
+  if (!status.isLoading && !reverifying) {
+    const failed =
+      attestation.status === 'failed' ||
+      status.isError ||
+      report?.status === 'failed' ||
+      report?.reports?.some((entry) => entry.status === 'failed');
+    state = attestation.status === 'partial' ? 'gateway' : 'verified';
+    if (failed) state = 'failed';
   }
-  const label = localize(`com_ui_nearai_shield_${state}`);
+  const label = localize(labels[state]);
   const Icon = icons[state];
   return (
     <>
@@ -89,11 +132,10 @@ function ModelVerification(params: { endpoint: string; model: string }) {
           <Viewer
             model={params.model}
             reports={report?.reports}
-            pending={details.isLoading || details.isFetching}
+            hardwareVerifiedAt={hardwareVerifiedAt(report?.reports)}
+            pending={details.isFetching || reverifying}
             isError={details.isError || status.isError || details.data?.enabled === false}
-            onVerify={() => {
-              void details.refetch();
-            }}
+            onVerify={() => reverify.mutate()}
             darkMode={resolvedMode === 'dark'}
             onClose={close}
           />

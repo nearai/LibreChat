@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { SelectDropDown } from '@librechat/client';
-import { dataService, QueryKeys } from 'librechat-data-provider';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { TNearAIReceipt, TNearAIVerificationReport } from 'librechat-data-provider';
-import { combineReplyReports } from './reports';
+import { combineReplyReports, hardwareVerifiedAt, replyReport, replyEnvironment } from './reports';
+import { reportQueryOptions } from './queries';
 import { useLocalize } from '~/hooks';
 import Viewer from './Viewer';
 
@@ -19,25 +19,17 @@ export default function Verification({
   onClose: () => void;
 }) {
   const localize = useLocalize();
+  const queryClient = useQueryClient();
   const [selected, setSelected] = useState(receipts[0].completionId);
   const receipt = receipts.find((item) => item.completionId === selected) ?? receipts[0];
-  const reply =
-    receipt.report?.kind === 'reply' && receipt.report.completionId === receipt.completionId
-      ? receipt.report
-      : undefined;
+  const reply = replyReport(receipt);
   const model = reply?.model ?? receipt.model;
-  const scope = reply?.scope === 'gateway' ? 'gateway' : undefined;
-  const enabled = !!endpoint && !!reply?.signature && !!reply.attestation;
+  const params = replyEnvironment(endpoint, receipt);
+  const scope = params?.scope;
+  const enabled = !!params;
   const environment = useQuery({
-    queryKey: [QueryKeys.nearaiAttestation, endpoint, model, 'reply-environment', scope],
-    queryFn: ({ signal }) =>
-      dataService.getNearAIAttestation(
-        { endpoint: endpoint ?? '', model, reports: true, scope },
-        signal,
-      ),
+    ...reportQueryOptions(queryClient, params ?? { endpoint: endpoint ?? '', model }),
     enabled,
-    retry: false,
-    refetchOnWindowFocus: false,
   });
   const failureMessage = localize('com_ui_nearai_environment_unavailable');
   const reports = useMemo(() => {
@@ -80,6 +72,11 @@ export default function Verification({
     <Viewer
       model={model}
       reports={reports}
+      hardwareVerifiedAt={
+        !environment.isError && environment.data?.enabled
+          ? hardwareVerifiedAt(environment.data.reports)
+          : undefined
+      }
       receipt={receipt}
       darkMode={darkMode}
       onClose={onClose}

@@ -1,4 +1,70 @@
-import type { TNearAIVerificationReport } from 'librechat-data-provider';
+import type {
+  TMessage,
+  TNearAIReceipt,
+  TNearAIAttestationParams,
+  TNearAIAttestationResponse,
+  TNearAIVerificationReport,
+} from 'librechat-data-provider';
+import type { QueryStatus } from '@tanstack/react-query';
+
+export function getReceipts(message: TMessage): TNearAIReceipt[] {
+  if (
+    message.isCreatedByUser ||
+    message.isUserSubmitted ||
+    message.userSubmittedPaths?.length ||
+    message.userSubmittedMessageFieldPaths?.length
+  ) {
+    return [];
+  }
+  const nearai = message.metadata?.nearai as { receipts?: TNearAIReceipt[] } | undefined;
+  return Array.isArray(nearai?.receipts) ? nearai.receipts : [];
+}
+
+export function replyReport(receipt: TNearAIReceipt) {
+  return receipt.report?.kind === 'reply' && receipt.report.completionId === receipt.completionId
+    ? receipt.report
+    : undefined;
+}
+
+export function replyEnvironment(
+  endpoint: string | null | undefined,
+  receipt: TNearAIReceipt,
+): Pick<TNearAIAttestationParams, 'endpoint' | 'model' | 'scope'> | undefined {
+  const report = replyReport(receipt);
+  if (!endpoint || !report?.signature || !report.attestation) return;
+  return {
+    endpoint,
+    model: report.model ?? receipt.model,
+    scope: report.scope === 'gateway' ? 'gateway' : undefined,
+  };
+}
+
+export function reportStaleTime(
+  data: TNearAIAttestationResponse | undefined,
+  queryStatus?: QueryStatus,
+): number {
+  if (
+    queryStatus === 'error' ||
+    !data?.enabled ||
+    data.status === 'failed' ||
+    !data.reports?.length ||
+    data.reports.some((entry) => entry.status !== 'verified' && entry.status !== 'partial')
+  ) {
+    return 0;
+  }
+  return 5 * 60 * 1000;
+}
+
+export function hardwareVerifiedAt(reports?: TNearAIVerificationReport[]): string | undefined {
+  let earliest: string | undefined;
+  for (const report of reports ?? []) {
+    if (report.kind !== 'model' || !Number.isFinite(Date.parse(report.verifiedAt))) continue;
+    if (!earliest || Date.parse(report.verifiedAt) < Date.parse(earliest)) {
+      earliest = report.verifiedAt;
+    }
+  }
+  return earliest;
+}
 
 /** Match the example: enrich matching hardware without changing the saved signature or verdict. */
 export function combineReplyReports(

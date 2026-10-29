@@ -20,6 +20,7 @@ import { cn } from '~/utils';
 export default function Viewer({
   model,
   reports,
+  hardwareVerifiedAt,
   receipt,
   pending = false,
   isError = false,
@@ -32,6 +33,7 @@ export default function Viewer({
 }: {
   model: string;
   reports?: TNearAIVerificationReport[];
+  hardwareVerifiedAt?: string;
   receipt?: TNearAIReceipt;
   pending?: boolean;
   isError?: boolean;
@@ -107,6 +109,12 @@ export default function Viewer({
             )}
         </OGDialogDescription>
       </OGDialogHeader>
+      {!loading && !unavailable && hardwareVerifiedAt && (
+        <p className="text-text-secondary text-xs">
+          {localize('com_ui_nearai_hardware_checked_at')}{' '}
+          <time dateTime={hardwareVerifiedAt}>{new Date(hardwareVerifiedAt).toLocaleString()}</time>
+        </p>
+      )}
       {children}
       <div className="relative flex min-h-0 flex-1 flex-col">
         {/* Keep the iframe paintable while its React app completes the handshake. */}
