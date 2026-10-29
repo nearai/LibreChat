@@ -48,23 +48,9 @@ function ModelVerification(params: { endpoint: string; model: string }) {
   }, []);
   const queryKey = [QueryKeys.nearaiAttestation, params.endpoint, params.model];
   const startupConfig = useGetStartupConfig();
-  const status = useNearAIAttestationQuery(params, {
-    structuralSharing: (previous, next) => {
-      // Failed status responses omit capability; keep the last known scope and the failed verdict.
-      if (next.enabled && next.status === 'failed' && !next.scope && previous?.enabled) {
-        return {
-          ...next,
-          scope: previous.scope ?? (previous.status === 'partial' ? 'gateway' : undefined),
-        };
-      }
-      return next;
-    },
-  });
-  const scope =
-    status.data?.enabled && (status.data.scope === 'gateway' || status.data.status === 'partial')
-      ? 'gateway'
-      : undefined;
-  const options = reportQueryOptions(queryClient, { ...params, scope });
+  const expected = startupConfig.data?.nearaiEndpoints?.includes(params.endpoint) === true;
+  const status = useNearAIAttestationQuery(params);
+  const options = reportQueryOptions(queryClient, params);
   const reportsKey = reportKey(params);
   const reverifying = useIsMutating({ mutationKey: reportsKey, exact: true }) > 0;
   const reverify = useMutation({
@@ -75,7 +61,7 @@ function ModelVerification(params: { endpoint: string; model: string }) {
         staleTime: 0,
         // Keep explicit verification running when switching models unmounts the shield.
         queryFn: () =>
-          dataService.getNearAIAttestation({ ...params, scope, reports: true, refresh: true }),
+          dataService.getNearAIAttestation({ ...params, reports: true, refresh: true }),
       }),
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: reportsKey });
@@ -89,13 +75,13 @@ function ModelVerification(params: { endpoint: string; model: string }) {
     ...options,
     enabled: open && status.data?.enabled === true,
   });
+  const supported = expected || status.data?.enabled === true;
   useEffect(() => {
-    if (status.data?.enabled !== true) return;
-    void prefetchReport(queryClient, { endpoint: params.endpoint, model: params.model, scope });
-  }, [queryClient, params.endpoint, params.model, status.data?.enabled, scope]);
+    if (!params.model || !supported) return;
+    void prefetchReport(queryClient, { endpoint: params.endpoint, model: params.model });
+  }, [queryClient, params.endpoint, params.model, supported]);
   const attestation = status.data?.enabled === true ? status.data : undefined;
   // A configured NEAR AI endpoint shows its first check instead of appearing only once it ends.
-  const expected = startupConfig.data?.nearaiEndpoints?.includes(params.endpoint) === true;
   if (!attestation && !(expected && status.isInitialLoading)) {
     return null;
   }

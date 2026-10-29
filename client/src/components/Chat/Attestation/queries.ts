@@ -3,6 +3,14 @@ import type { TNearAIAttestationParams, TNearAIAttestationResponse } from 'libre
 import type { QueryClient, QueryFunctionContext } from '@tanstack/react-query';
 import { reportStaleTime } from './reports';
 
+function gatewayReport(data?: TNearAIAttestationResponse): boolean {
+  return (
+    data?.enabled === true &&
+    !!data.reports?.length &&
+    data.reports.every((report) => report.scope === 'gateway')
+  );
+}
+
 export function reportKey(params: Pick<TNearAIAttestationParams, 'endpoint' | 'model'>) {
   return [QueryKeys.nearaiAttestation, params.endpoint, params.model, 'reports'];
 }
@@ -12,12 +20,28 @@ export function reportQueryOptions(
   params: Pick<TNearAIAttestationParams, 'endpoint' | 'model' | 'scope'>,
 ) {
   const queryKey = reportKey(params);
-  const key = params.scope === 'gateway' ? [...queryKey, 'gateway'] : queryKey;
+  const full = client.getQueryState<TNearAIAttestationResponse>(queryKey);
+  // Metadata normalizes External/Chutes reports to Gateway scope on the server.
+  const gateway = params.scope === 'gateway' && !gatewayReport(full?.data);
+  const key = gateway ? [...queryKey, 'gateway'] : queryKey;
   const cached = client.getQueryState<TNearAIAttestationResponse>(key);
   return {
     queryKey: key,
-    queryFn: ({ signal }: QueryFunctionContext) =>
-      dataService.getNearAIAttestation({ ...params, reports: true }, signal),
+    queryFn: async ({ signal }: QueryFunctionContext): Promise<TNearAIAttestationResponse> => {
+      if (gateway && client.isFetching({ queryKey, exact: true })) {
+        try {
+          const reports = await client.fetchQuery(
+            reportQueryOptions(client, { endpoint: params.endpoint, model: params.model }),
+          );
+          signal?.throwIfAborted();
+          if (gatewayReport(reports)) return reports;
+        } catch {
+          // A failed shared request must not prevent an independent Gateway check.
+          signal?.throwIfAborted();
+        }
+      }
+      return dataService.getNearAIAttestation({ ...params, reports: true }, signal);
+    },
     staleTime: reportStaleTime(cached?.data, cached?.status),
     cacheTime: 10 * 60 * 1000,
     retry: false,

@@ -94,6 +94,62 @@ it('prefetches supported model reports before click, sends them to the iframe, a
   await waitFor(() => expect(shield).toHaveFocus());
 });
 
+it.each([
+  'Qwen/Qwen3.6-35B-A3B-FP8',
+  'z-ai/glm-5.3-flash',
+  'openai/gpt-4.1-mini',
+  'deepseek/deepseek-v3.2',
+])(
+  'warms %s on selection before status verification finishes and reuses it on return',
+  async (model) => {
+    let finishStatus!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      finishStatus = resolve;
+    });
+    jest.mocked(request.get).mockImplementation(async (url) => {
+      if (!String(url).includes('/nearai/attestation')) {
+        return { nearaiVerifyUrl: viewerUrl, nearaiEndpoints: ['NEAR AI'] };
+      }
+      const parsed = new URL(String(url), 'http://localhost');
+      const selected = parsed.searchParams.get('model')!;
+      const gateway = selected.startsWith('openai/') || selected.startsWith('deepseek/');
+      const result = {
+        ...status,
+        model: selected,
+        status: gateway ? ('partial' as const) : ('verified' as const),
+      };
+      if (parsed.searchParams.has('reports')) {
+        return {
+          ...result,
+          reports: (gateway ? [gatewayReport] : [gatewayReport, modelReport]).map((entry) => ({
+            ...entry,
+            model: selected,
+          })),
+        };
+      }
+      await pending;
+      return result;
+    });
+    const { client, select } = setup(model);
+    await waitFor(() => expect(reportRequests()).toHaveLength(1));
+    await waitFor(() => expect(client.isFetching()).toBe(1));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByTestId('header-nearai-shield')).toHaveAttribute('aria-disabled', 'true');
+    const other =
+      model === 'z-ai/glm-5.3-flash' ? 'Qwen/Qwen3.6-35B-A3B-FP8' : 'z-ai/glm-5.3-flash';
+    select(other);
+    await waitFor(() => expect(reportRequests()).toHaveLength(2));
+    select(model);
+    await act(async () => finishStatus());
+    await waitFor(() => expect(client.isFetching()).toBe(0));
+    fireEvent.click(screen.getByTestId('header-nearai-shield'));
+    const frame = await screen.findByTitle('NEAR AI Verification Center');
+    expect(new URL(frame.getAttribute('src')!).searchParams.get('model')).toBe(model);
+    expect(reportRequests()).toHaveLength(2);
+    expect(reportRequests().every(([url]) => !String(url).includes('refresh=1'))).toBe(true);
+  },
+);
+
 it('recovers verification after a user saves a missing provider key without reloading the page', async () => {
   jest.spyOn(console, 'error').mockImplementation(() => undefined);
   const saveKeyLabel = 'Save key';
@@ -425,6 +481,7 @@ it('retains an explicit hardware failure across a delayed network failure until 
   await waitFor(() => expect(client.isFetching()).toBe(0));
   fireEvent.click(shield);
   await waitFor(() => expect(shield).toHaveAccessibleName('NEAR AI attestation failed'));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Verify again' })).toBeEnabled());
   fireEvent.click(screen.getByRole('button', { name: 'Verify again' }));
   await waitFor(() => expect(shield).toHaveAccessibleName('Checking NEAR AI attestation…'));
   await act(async () => reject(new Error('offline')));
@@ -859,7 +916,8 @@ it.each([
   fireEvent.click(screen.getByTestId('nearai-signature-button'));
   await screen.findByTitle('NEAR AI Verification Center');
   expect(reportRequests()).toHaveLength(1);
-  expect(reportRequests()[0][0].includes('scope=gateway')).toBe(scope === 'gateway');
+  expect(reportRequests()[0][0]).not.toContain('refresh=1');
+  expect(reportRequests()[0][0]).not.toContain('scope=gateway');
 });
 
 it('shares an in-progress refresh with a reply opened after switching models', async () => {
@@ -928,7 +986,7 @@ it('shares an in-progress refresh with a reply opened after switching models', a
   expect(reportRequests()).toHaveLength(3);
 });
 
-it('keeps Gateway scope after a failed status refresh without requesting a second report', async () => {
+it('keeps the Gateway report after a failed status refresh without requesting a second report', async () => {
   const model = 'openai/gpt-4.1-mini';
   let refreshed = false;
   jest.mocked(request.get).mockImplementation(async (url) => {
@@ -957,8 +1015,10 @@ it('keeps Gateway scope after a failed status refresh without requesting a secon
   expect(reportRequests()).toHaveLength(2);
   expect(client.getQueryData([QueryKeys.nearaiAttestation, 'NEAR AI', model])).toMatchObject({
     status: 'failed',
-    scope: 'gateway',
   });
+  expect(
+    client.getQueryData(reportQueryOptions(client, { endpoint: 'NEAR AI', model }).queryKey),
+  ).toMatchObject({ reports: [expect.objectContaining({ scope: 'gateway', status: 'failed' })] });
   select(status.model);
   await screen.findByTestId('header-nearai-shield');
   select(model);
