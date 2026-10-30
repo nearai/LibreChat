@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Button,
   Spinner,
+  Skeleton,
   OGDialogTitle,
   OGDialogHeader,
   OGDialogContent,
@@ -15,7 +16,7 @@ import type { TranslationKeys } from '~/hooks/useLocalize';
 import { connectVerificationReport, verificationViewerUrl } from './connection';
 import { useGetStartupConfig } from '~/data-provider/Endpoints/queries';
 import useClockFormat from '~/hooks/useClockFormat';
-import { cn, getMessageTimestamp } from '~/utils';
+import { getMessageTimestamp } from '~/utils';
 import { receiptVerifyLink } from './links';
 import { useLocalize } from '~/hooks';
 
@@ -99,15 +100,16 @@ export default function Viewer({
     viewerUrl && unavailable && receipt ? receiptVerifyLink(viewerUrl, receipt) : undefined;
 
   return (
-    <OGDialogContent
-      className={cn(
-        'flex max-h-[85dvh] w-full max-w-xl flex-col overflow-hidden sm:w-[calc(100%-2rem)]',
-        showFrame && !loading && state !== 'error' ? 'h-[85dvh] max-h-[900px]' : 'h-[360px]',
-      )}
-    >
+    <OGDialogContent className="flex h-[85dvh] max-h-[900px] w-full max-w-4xl flex-col overflow-hidden sm:w-[calc(100%-2rem)]">
       <OGDialogHeader>
-        <OGDialogTitle>{localize('com_ui_nearai_verification_title')}</OGDialogTitle>
-        <OGDialogDescription className={loading ? 'sr-only' : undefined}>
+        <OGDialogTitle>
+          {localize(
+            receipt
+              ? 'com_ui_nearai_response_verification_title'
+              : 'com_ui_nearai_model_verification_title',
+          )}
+        </OGDialogTitle>
+        <OGDialogDescription className="sr-only">
           {description ??
             localize(
               onVerify ? 'com_ui_nearai_verification_model' : 'com_ui_nearai_verification_snapshot',
@@ -126,19 +128,44 @@ export default function Viewer({
         {loading && (
           <div
             role="status"
-            className="bg-surface-dialog absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 px-4 py-6 text-center"
+            className="bg-surface-dialog absolute inset-0 z-10 space-y-6 overflow-y-auto py-1"
           >
-            <div className="bg-surface-secondary rounded-full p-4">
-              <Spinner size={32} />
+            <div className="border-border-light space-y-5 rounded-xl border p-4" aria-hidden="true">
+              <div className="flex items-center gap-3">
+                <Skeleton className="size-10 shrink-0 rounded-full" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skeleton className="h-3 w-16" />
+                  <p className="text-text-primary truncate text-sm font-medium">{model}</p>
+                </div>
+                <Skeleton className="h-6 w-20 rounded-full" />
+              </div>
+              {receipt ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-4 w-48 max-w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : (
+                <>
+                  <Skeleton className="h-10 w-full" />
+                  <div className="grid grid-cols-2 gap-6">
+                    {Array.from({ length: 4 }, (_, index) => (
+                      <div key={index} className="space-y-2">
+                        <Skeleton className="h-3 w-20 max-w-full" />
+                        <Skeleton className="h-4 w-28 max-w-full" />
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
-            <div className="max-w-full space-y-2">
-              <p className="text-text-primary text-sm font-medium">
-                {localize(
-                  pending ? 'com_ui_nearai_viewer_verifying' : 'com_ui_nearai_viewer_loading',
-                )}
-              </p>
-              <p className="text-text-secondary text-xs break-all">{model}</p>
-            </div>
+            <p className="text-text-secondary flex items-center justify-center gap-2 text-sm">
+              <Spinner className="shrink-0" size={16} />
+              {localize(
+                pending ? 'com_ui_nearai_viewer_verifying' : 'com_ui_nearai_viewer_loading',
+              )}
+              <span className="sr-only"> {model}</span>
+            </p>
           </div>
         )}
         {!loading && unavailable && (

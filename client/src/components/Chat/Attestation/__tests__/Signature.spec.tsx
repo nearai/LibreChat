@@ -98,6 +98,8 @@ it('opens the real dialog on click, sends the report, closes from the iframe and
   expect(iframe).toHaveAttribute('referrerpolicy', 'no-referrer');
   expect(new URL(iframe.src).searchParams.get('model')).toBe(receipt.model);
   expect(new URL(iframe.src).searchParams.get('showHeader')).toBe('false');
+  expect(new URL(iframe.src).searchParams.has('layout')).toBe(false);
+  expect(screen.getByRole('dialog', { name: 'Response verification' })).toBeVisible();
   const post = jest.spyOn(iframe.contentWindow!, 'postMessage');
   receive(iframe, 'NEAR_AI_VERIFICATION_CENTER_READY');
   expect(post).toHaveBeenCalledWith(
@@ -153,6 +155,11 @@ it('joins an unfinished message-list prefetch when the reply shield is clicked',
   await waitFor(() => expect(request.get).toHaveBeenCalledTimes(1));
   fireEvent.click(screen.getByTestId('nearai-signature-button'));
   expect(screen.getByText('Verifying hardware…')).toBeVisible();
+  const accessibleModels = screen
+    .getAllByText(receipt.model)
+    .filter((node) => !node.closest('[aria-hidden="true"]'));
+  expect(accessibleModels).toHaveLength(1);
+  expect(accessibleModels[0].closest('[role="status"]')).not.toBeNull();
   await act(async () =>
     resolve({
       enabled: true,
@@ -341,7 +348,7 @@ it('preserves the signature when current hardware cannot be reached and retries 
     'aria-label',
     'Reply signed by the model TEE',
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Verify hardware again' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Verify again' }));
   await waitFor(() =>
     expect(get.mock.calls.filter(([url]) => String(url).includes('reports=1'))).toHaveLength(2),
   );
@@ -365,7 +372,7 @@ it('replaces previously successful hardware reports with unavailable reports whe
     if (String(url).includes('reports=1')) throw new Error('offline');
     return current(url, ...args);
   });
-  fireEvent.click(screen.getByRole('button', { name: 'Verify hardware again' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Verify again' }));
   await waitFor(() =>
     expect(logged).toHaveBeenCalledWith(expect.objectContaining({ message: 'offline' })),
   );

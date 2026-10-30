@@ -63,6 +63,8 @@ it('prefetches supported model reports before click, sends them to the iframe, a
   fireEvent.click(shield);
   const frame = (await screen.findByTitle('NEAR AI Verification Center')) as HTMLIFrameElement;
   await waitFor(() => expect(frame.src).toContain('cloud-stg.near.ai'));
+  expect(new URL(frame.src).searchParams.has('layout')).toBe(false);
+  expect(screen.getByRole('dialog', { name: 'Model verification' })).toBeVisible();
   const post = jest.spyOn(frame.contentWindow!, 'postMessage');
   act(() =>
     window.dispatchEvent(
