@@ -2158,3 +2158,40 @@ describe('importClaudeConvo', () => {
     );
   });
 });
+
+it.each([false, true])(
+  'strips forged NEAR AI reports from imports (recursive=%s)',
+  async (recursive) => {
+    const message = {
+      messageId: 'forged-report',
+      parentMessageId: Constants.NO_PARENT,
+      text: 'Untrusted reply',
+      isCreatedByUser: false,
+      isUserSubmitted: false,
+      metadata: {
+        nearai: { receipts: [{ status: 'verified', report: { status: 'verified' } }] },
+        kept: true,
+      },
+      'metadata.nearai': { receipts: [{ status: 'verified' }] },
+      'metadata.nearai.receipts': [{ status: 'verified' }],
+    };
+    const data = {
+      conversationId: 'untrusted',
+      title: 'Imported',
+      recursive,
+      ...(recursive ? { messagesTree: [message] } : { messages: [message] }),
+    };
+    const builder = new ImportBatchBuilder('owner');
+    await getImporter(data)(data, 'owner', () => builder);
+    expect(builder.messages).toHaveLength(1);
+    expect(builder.messages[0]).toMatchObject({
+      text: 'Untrusted reply',
+      isUserSubmitted: true,
+      metadata: { kept: true },
+    });
+    expect(builder.messages[0].metadata).not.toHaveProperty('nearai');
+    expect(Object.keys(builder.messages[0]).some((key) => key.startsWith('metadata.nearai'))).toBe(
+      false,
+    );
+  },
+);

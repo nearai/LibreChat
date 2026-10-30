@@ -120,9 +120,20 @@ afterEach(() => {
   delete process.env.LANGFUSE_SAMPLE_RATE;
   delete process.env.TENANT_ISOLATION_STRICT;
   delete process.env.CODE_ENVIRONMENT_DECISION_VERSION;
+  delete process.env.NEAR_AI_VERIFY_URL;
 });
 
 describe('GET /api/config', () => {
+  it('publishes the staging verification viewer only after login, with an environment override', async () => {
+    mockGetAppConfig.mockResolvedValue(baseAppConfig);
+    const anonymous = await request(createApp(null)).get('/api/config');
+    expect(anonymous.body).not.toHaveProperty('nearaiVerifyUrl');
+    const authenticated = await request(createApp(mockUser)).get('/api/config');
+    expect(authenticated.body.nearaiVerifyUrl).toBe('https://cloud-stg.near.ai/verify');
+    process.env.NEAR_AI_VERIFY_URL = 'https://cloud.near.ai/verify';
+    const overridden = await request(createApp(mockUser)).get('/api/config');
+    expect(overridden.body.nearaiVerifyUrl).toBe('https://cloud.near.ai/verify');
+  });
   describe('unauthenticated (no req.user)', () => {
     it('should call getAppConfig with baseOnly when no tenant context', async () => {
       mockGetAppConfig.mockResolvedValue(baseAppConfig);

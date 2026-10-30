@@ -1,3 +1,4 @@
+import { omit } from 'lodash';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { dataService, QueryKeys, MutationKeys, Constants } from 'librechat-data-provider';
 import type { UseMutationResult, UseMutationOptions } from '@tanstack/react-query';
@@ -76,6 +77,7 @@ export const useEditArtifact = (
 
           newArray[targetIndex] = {
             ...newArray[targetIndex],
+            metadata: omit(newArray[targetIndex].metadata, 'nearai'),
             content: data.content,
             text: data.text,
           };

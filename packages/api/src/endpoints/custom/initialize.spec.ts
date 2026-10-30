@@ -1,4 +1,4 @@
-import { AuthType, ErrorTypes } from 'librechat-data-provider';
+import { AuthType, ErrorTypes, FileSources } from 'librechat-data-provider';
 import type { BaseInitializeParams } from '~/types';
 
 const mockValidateEndpointURL = jest.fn();
@@ -175,6 +175,30 @@ describe('initializeCustom – Agents API user key resolution', () => {
     expect(params.db.getUserKeyValues).not.toHaveBeenCalled();
   });
 });
+
+it('uses the configured NEAR AI verification deadline for Chat requests', async () => {
+  jest.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise(() => {}));
+  mockGetOpenAIConfig.mockReturnValueOnce({
+    llmConfig: { model: 'test-model' },
+    configOptions: {},
+  });
+  const params = createParams({ baseURL: 'https://cloud-stg-api.near.ai/v1' });
+  params.req.config = {
+    ...params.req.config,
+    fileStrategy: FileSources.local,
+    imageOutputType: 'png',
+    config: { nearai: { verificationTimeoutMs: 1000 } },
+  };
+  const options = await initializeCustom(params);
+  const fetch = options.configOptions?.fetch;
+  if (!fetch) throw new Error('Expected the NEAR AI fetch');
+  const response = await fetch('https://cloud-stg-api.near.ai/v1/chat/completions', {
+    method: 'POST',
+    body: JSON.stringify({ model: 'deadline-test' }),
+  });
+  expect(response.status).toBe(403);
+  expect(await response.json()).toMatchObject({ error: { code: 'nearai_verification_timeout' } });
+}, 3000);
 
 describe('initializeCustom – OpenAI-compatible header forwarding', () => {
   const userControlledHeaderCases: Array<{

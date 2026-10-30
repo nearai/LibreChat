@@ -1,6 +1,12 @@
 import { maxWorkers } from '../../config/jest.workers.cjs';
 
 const esModules = [
+  '@nearai/inference-sdk',
+  'jose',
+  'hpke',
+  'ohttp-ts',
+  'bhttp-ts',
+  '@freedomofpress',
   '@langchain/langgraph',
   '@langchain/langgraph-checkpoint',
   '@langchain/langgraph-sdk',
@@ -31,7 +37,7 @@ export default {
   coverageReporters: ['text', 'cobertura'],
   testResultsProcessor: 'jest-junit',
   transform: {
-    '\\.[jt]sx?$': [
+    '\\.[cm]?[jt]sx?$': [
       'babel-jest',
       {
         presets: [

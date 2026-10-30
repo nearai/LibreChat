@@ -1,27 +1,37 @@
 import { logger } from '@librechat/data-schemas';
-import { extractEnvVariable } from 'librechat-data-provider';
-import { InferenceClient, isApiError, isVerificationError } from '@nearai/inference-sdk/node';
+import { AttestationClient, InferenceClient, VerificationError } from '@nearai/inference-sdk/node';
+import {
+  ErrorTypes,
+  extractEnvVariable,
+  DEFAULT_NEAR_AI_VERIFICATION_TIMEOUT_MS,
+} from 'librechat-data-provider';
+import type { TNearAIAttestationParams, TNearAIVerificationReport } from 'librechat-data-provider';
 import type { AppConfig } from '@librechat/data-schemas';
+import type { GetUserKeyValuesFunction } from '~/types';
 import type { NearAIReceipt } from './receipts';
+import { createReplyReport, createFailureReport, getVerificationErrorCode } from './report';
 import { getNearAIReceiptCollector, observeCompletionBody } from './receipts';
 import { getCustomEndpointConfig } from '~/app/config';
+import { getSafeErrorMetadata } from '~/utils/errors';
+import { detachOnAbort } from '~/utils/promises';
+import { verifyModelReports } from './models';
 import { isUserProvided } from '~/utils';
 
 /** NEAR AI Cloud Gateway hosts whose attestation the SDK can verify. */
-const NEAR_AI_HOSTS = new Set(['cloud-api.near.ai']);
+const NEAR_AI_HOSTS = new Set(['cloud-api.near.ai', 'cloud-stg-api.near.ai']);
 
 /** Matches the SDK's default deployment-verification cache lifetime. */
 const ATTESTATION_TTL_MS = 60 * 60 * 1000;
 
-export type NearAIAttestationState = 'verified' | 'failed';
+export type NearAIAttestationState = 'verified' | 'partial' | 'failed';
 
 export interface NearAIAttestationStatus {
   model: string;
   status: NearAIAttestationState;
+  scope?: 'model' | 'gateway';
   /** When the deployment evidence was last checked (not when the cache was read). */
   checkedAt: string;
   errorCode?: string;
-  message?: string;
 }
 
 /** Matches the `Fetch` shape the OpenAI client configuration accepts. */
@@ -30,10 +40,12 @@ export type NearAIFetch = (input: string | URL | Request, init?: RequestInit) =>
 export interface NearAICredentials {
   apiKey: string;
   baseURL: string;
+  verificationTimeoutMs?: number;
 }
 
 /** Stable error code the client can recognize when attestation blocks a Chat request. */
-export const NEAR_AI_ATTESTATION_FAILED = 'nearai_attestation_failed';
+export const NEAR_AI_ATTESTATION_FAILED: ErrorTypes.NEAR_AI_ATTESTATION_FAILED =
+  ErrorTypes.NEAR_AI_ATTESTATION_FAILED;
 
 /**
  * A local 403 in the OpenAI error format. Returning it, rather than throwing, keeps the
@@ -58,34 +70,75 @@ export function isNearAIBaseURL(baseURL?: string | null): boolean {
   }
 }
 
-/** One SDK client per credential pair, so Chat and status checks share the verification cache. */
-const clients = new Map<string, InferenceClient>();
-const statuses = new Map<string, NearAIAttestationStatus>();
+type Session = { client: InferenceClient; scope: 'model' | 'gateway'; checkedAt?: string };
+type CachedSession = { createdAt: number; pending: Promise<Session>; invalidated?: boolean };
+// Metadata selects E2EE/signing mode, so sessions must be scoped to the requested model.
+const clients = new Map<string, CachedSession>();
+const clientKey = ({ apiKey, baseURL }: NearAICredentials, model: string) =>
+  `${baseURL}\n${apiKey}\n${model}`;
 
-const clientKey = ({ apiKey, baseURL }: NearAICredentials) => `${baseURL}\n${apiKey}`;
-
-function getClient(credentials: NearAICredentials, fresh = false): InferenceClient {
-  const key = clientKey(credentials);
-  let client = clients.get(key);
-  if (!client || fresh) {
-    client = new InferenceClient({
-      apiKey: credentials.apiKey,
-      baseUrl: credentials.baseURL,
-      attestationCacheTimeToLiveMs: ATTESTATION_TTL_MS,
-      /** Encrypts Chat to the verified model key. Without it, streamed replies are signed
-       *  by the Gateway rather than the model TEE. */
-      e2ee: true,
-    });
-    clients.set(key, client);
-  }
-  return client;
+function invalidateSession(key: string): void {
+  const entry = clients.get(key);
+  if (entry) entry.invalidated = true;
+  clients.delete(key);
 }
 
-function errorCode(error: unknown): string {
-  if (isVerificationError(error) || isApiError(error)) {
-    return error.failure.code;
+function getSession(credentials: NearAICredentials, model: string, fresh = false): CachedSession {
+  const key = clientKey(credentials, model);
+  const previous = clients.get(key);
+  if (previous && !fresh && Date.now() - previous.createdAt < ATTESTATION_TTL_MS) return previous;
+  invalidateSession(key);
+  const pending = new AttestationClient({
+    apiKey: credentials.apiKey,
+    baseUrl: credentials.baseURL,
+  })
+    .fetchModelMetadata(model)
+    .then((metadata): Session => {
+      const provider = metadata.providerType.trim().toLowerCase();
+      if (!['vllm', 'external', 'chutes'].includes(provider)) {
+        throw new VerificationError({ code: 'policy.model_attestation_required' });
+      }
+      const privateModel = provider === 'vllm';
+      return {
+        scope: privateModel ? 'model' : 'gateway',
+        client: new InferenceClient({
+          apiKey: credentials.apiKey,
+          baseUrl: credentials.baseURL,
+          // The outer cache owns the one-hour lifetime; SDK evidence must not expire mid-request.
+          attestationCacheTimeToLiveMs: Infinity,
+          e2ee: privateModel,
+          signingAlgo: privateModel ? 'ed25519' : 'ecdsa',
+        }),
+      };
+    });
+  const entry = { createdAt: Date.now(), pending };
+  clients.set(key, entry);
+  void pending.catch(() => {
+    if (clients.get(key) === entry) clients.delete(key);
+  });
+  return entry;
+}
+
+/** Display reports leave Chat's SDK session intact unless explicitly refreshed. */
+export async function verifyNearAIModelReports(
+  credentials: NearAICredentials,
+  model: string,
+  options: Pick<TNearAIAttestationParams, 'scope' | 'refresh'> = {},
+): Promise<TNearAIVerificationReport[]> {
+  try {
+    return await verifyModelReports(
+      new AttestationClient({ apiKey: credentials.apiKey, baseUrl: credentials.baseURL }),
+      model,
+      options.scope,
+      AbortSignal.timeout(
+        credentials.verificationTimeoutMs ?? DEFAULT_NEAR_AI_VERIFICATION_TIMEOUT_MS,
+      ),
+    );
+  } finally {
+    if (options.refresh) {
+      invalidateSession(clientKey(credentials, model));
+    }
   }
-  return 'unknown';
 }
 
 /**
@@ -96,36 +149,57 @@ export async function verifyNearAIModel(
   credentials: NearAICredentials,
   model: string,
   refresh = false,
+  signal?: AbortSignal,
 ): Promise<NearAIAttestationStatus> {
-  const statusKey = `${clientKey(credentials)}\n${model}`;
-  const previous = statuses.get(statusKey);
+  return (await verifySession(credentials, model, refresh, signal)).status;
+}
+
+async function verifySession(
+  credentials: NearAICredentials,
+  model: string,
+  refresh: boolean,
+  signal?: AbortSignal,
+): Promise<{ status: NearAIAttestationStatus; client?: InferenceClient }> {
+  signal ??= AbortSignal.timeout(
+    credentials.verificationTimeoutMs ?? DEFAULT_NEAR_AI_VERIFICATION_TIMEOUT_MS,
+  );
+  let entry: CachedSession | undefined;
+  let result: { status: NearAIAttestationStatus; client?: InferenceClient };
   try {
-    await getClient(credentials, refresh).verify(model);
-    const now = Date.now();
-    const isFreshCheck =
-      refresh ||
-      previous?.status !== 'verified' ||
-      now - Date.parse(previous.checkedAt) >= ATTESTATION_TTL_MS;
-    const status: NearAIAttestationStatus = {
-      model,
-      status: 'verified',
-      checkedAt: isFreshCheck ? new Date(now).toISOString() : previous.checkedAt,
+    signal.throwIfAborted();
+    entry = getSession(credentials, model, refresh);
+    const session = await detachOnAbort(entry.pending, signal);
+    await detachOnAbort(session.client.verify(model), signal);
+    session.checkedAt ??= new Date().toISOString();
+    result = {
+      client: session.client,
+      status: {
+        model,
+        status: session.scope === 'model' ? 'verified' : 'partial',
+        scope: session.scope,
+        checkedAt: session.checkedAt,
+      },
     };
-    statuses.set(statusKey, status);
-    return status;
   } catch (error) {
-    const code = errorCode(error);
-    logger.warn(`[nearai] Attestation failed for ${model}: ${code}`, error);
-    const status: NearAIAttestationStatus = {
-      model,
-      status: 'failed',
-      checkedAt: new Date().toISOString(),
-      errorCode: code,
-      message: error instanceof Error ? error.message : String(error),
+    if (signal.aborted && clients.get(clientKey(credentials, model)) === entry) {
+      invalidateSession(clientKey(credentials, model));
+    }
+    const code = getVerificationErrorCode(error);
+    logger.warn(`[nearai] Attestation failed for ${model}: ${code}`, getSafeErrorMetadata(error));
+    result = {
+      status: {
+        model,
+        status: 'failed',
+        checkedAt: new Date().toISOString(),
+        errorCode: code,
+      },
     };
-    statuses.set(statusKey, status);
-    return status;
   }
+  // Refresh can invalidate the entry before metadata resolves; its own rejection is not a refresh.
+  if (!signal.aborted && entry?.invalidated) {
+    return verifySession(credentials, model, false, signal);
+  }
+  return result;
 }
 
 function readModel(body: RequestInit['body']): string | undefined {
@@ -147,21 +221,30 @@ function readModel(body: RequestInit['body']): string | undefined {
 export function createNearAIFetch(credentials: NearAICredentials): NearAIFetch {
   return async (input, init) => {
     const model = readModel(init?.body);
-    if (model) {
-      const status = await verifyNearAIModel(credentials, model);
-      if (status.status !== 'verified') {
-        return attestationFailedResponse(model, status.errorCode ?? 'unknown');
-      }
+    if (!model) return attestationFailedResponse('', 'input.invalid');
+    const signal = AbortSignal.any([
+      AbortSignal.timeout(
+        credentials.verificationTimeoutMs ?? DEFAULT_NEAR_AI_VERIFICATION_TIMEOUT_MS,
+      ),
+      ...(init?.signal ? [init.signal] : []),
+    ]);
+    const { status, client } = await verifySession(credentials, model, false, signal);
+    if (status.status === 'failed' || !client) {
+      return attestationFailedResponse(model, status.errorCode ?? 'unknown');
     }
-    /** The client that sent the request holds its captured bytes, so it must verify the reply. */
-    const client = getClient(credentials);
     const response = await client.fetch(input, init);
     const collector = getNearAIReceiptCollector();
-    if (!collector || !model || !response.ok) {
+    if (!collector || !response.ok) {
       return response;
     }
     return observeCompletionBody(response, (completionId) =>
-      collector.add(verifyNearAICompletion(client, model, completionId)),
+      collector.add(verifyNearAICompletion(client, model, completionId), () =>
+        failedReceipt(
+          new DOMException('Signature verification timed out', 'TimeoutError'),
+          completionId,
+          model,
+        ),
+      ),
     );
   };
 }
@@ -174,48 +257,81 @@ async function verifyNearAICompletion(
 ): Promise<NearAIReceipt> {
   try {
     const result = await client.verifyResponse(completionId);
+    const verifiedAt = new Date().toISOString();
+    const report = createReplyReport(result, verifiedAt);
+    if (!report.ok) {
+      logger.warn('[nearai] Verification report unavailable', { code: report.error.code });
+    }
     return {
       completionId,
       model,
       status: 'verified',
-      verifiedAt: new Date().toISOString(),
+      verifiedAt,
       signatureKind: result.signatureKind,
       signingAlgo: result.signature.signer.signingAlgo,
       signingAddress: result.signature.signer.signingAddress,
       signedText: result.signature.signedText,
       signature: result.signature.signature,
+      ...(report.ok ? { report: report.value } : {}),
     };
   } catch (error) {
-    const code = errorCode(error);
-    logger.warn(`[nearai] Signature verification failed for ${completionId}: ${code}`, error);
-    return {
-      completionId,
-      model,
-      status: 'failed',
-      verifiedAt: new Date().toISOString(),
-      errorCode: code,
-    };
+    return failedReceipt(error, completionId, model);
   }
+}
+
+function failedReceipt(error: unknown, completionId: string, model: string): NearAIReceipt {
+  const code = getVerificationErrorCode(error);
+  logger.warn(
+    `[nearai] Signature verification failed for ${completionId}: ${code}`,
+    getSafeErrorMetadata(error),
+  );
+  const verifiedAt = new Date().toISOString();
+  return {
+    completionId,
+    model,
+    status: 'failed',
+    verifiedAt,
+    errorCode: code,
+    report: createFailureReport(error, completionId, model, verifiedAt),
+  };
 }
 
 /**
  * Resolves credentials for a NEAR AI custom endpoint from app config.
- * Returns undefined for other endpoints and for user-provided keys or URLs.
+ * Returns undefined for other endpoints and user-provided URLs. User keys are resolved
+ * through the caller's authenticated user and the same database method used by Chat.
  */
-export function getNearAICredentials(
+export async function getNearAICredentials(
   appConfig: AppConfig | undefined,
   endpoint: string,
-): NearAICredentials | undefined {
+  userKey?: { userId?: string; getUserKeyValues?: GetUserKeyValuesFunction },
+): Promise<NearAICredentials | undefined> {
   let endpointConfig;
   try {
     endpointConfig = getCustomEndpointConfig({ endpoint, appConfig });
   } catch {
     return undefined;
   }
-  const apiKey = extractEnvVariable(endpointConfig?.apiKey ?? '');
+  let apiKey = extractEnvVariable(endpointConfig?.apiKey ?? '');
   const baseURL = extractEnvVariable(endpointConfig?.baseURL ?? '');
-  if (!apiKey || !isNearAIBaseURL(baseURL) || isUserProvided(apiKey)) {
+  if (!apiKey || !isNearAIBaseURL(baseURL)) {
     return undefined;
   }
-  return { apiKey, baseURL };
+  if (isUserProvided(apiKey)) {
+    if (!userKey?.userId || !userKey.getUserKeyValues) {
+      throw new Error('nearai_credentials_unavailable');
+    }
+    const values = await userKey.getUserKeyValues({ userId: userKey.userId, name: endpoint });
+    if (typeof values.apiKey !== 'string' || !values.apiKey || isUserProvided(values.apiKey)) {
+      throw new Error('nearai_credentials_unavailable');
+    }
+    apiKey = values.apiKey;
+  }
+  return {
+    apiKey,
+    baseURL,
+    ...(appConfig?.config.nearai && {
+      verificationTimeoutMs: appConfig.config.nearai.verificationTimeoutMs,
+    }),
+  };
 }

@@ -66,6 +66,7 @@ import { isActionTool } from './types/tools';
 import { apiBaseUrl } from './api-endpoints';
 import { FileSources } from './types/files';
 import { MCPServersSchema } from './mcp';
+import { nearAIConfigSchema } from './nearai';
 export {
   MAX_SUBAGENTS,
   MAX_SUBAGENTS_CEILING,
@@ -3129,6 +3130,10 @@ export function supportsConversationTitleOwnership(config?: {
 }
 
 export type TStartupConfig = {
+  /** Trusted NEAR AI report viewer, supplied only to authenticated clients. */
+  nearaiVerifyUrl?: string;
+  /** Custom endpoints verified through NEAR AI, so the shield can show its first check. */
+  nearaiEndpoints?: string[];
   conversationTitleOwnershipVersion?: typeof CONVERSATION_TITLE_OWNERSHIP_VERSION;
   appTitle: string;
   socialLogins?: string[];
@@ -3840,6 +3845,7 @@ export type TToolCallPreviewsConfig = z.infer<typeof toolCallPreviewsConfigSchem
 
 export const configSchema = z.object({
   version: z.string(),
+  nearai: nearAIConfigSchema.optional(),
   permissions: z.object({ maxWriteAttempts: permissionWriteAttemptsSchema }).optional(),
   cache: z.boolean().default(true),
   projects: chatProjectsConfigSchema,
@@ -4856,6 +4862,10 @@ export enum ErrorTypes {
    * An agent model provider failed and the run could not recover.
    */
   UPSTREAM_MODEL_ERROR = 'upstream_model_error',
+  /**
+   * NEAR AI deployment verification failed or timed out, so the message was not sent
+   */
+  NEAR_AI_ATTESTATION_FAILED = 'nearai_attestation_failed',
   /**
    * Context pruning removed every message; nothing fits the configured context window
    */

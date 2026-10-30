@@ -18,6 +18,7 @@ import {
   isStepLimitError,
   getModelStreamFailure,
   resolveModelStreamError,
+  getUserFacingRequestError,
 } from './errors';
 import { MCPAuthenticationRejectedError, MCPAuthenticationRefreshError } from '~/mcp/errors';
 import { createTerminalRunErrorObserver } from './failures/terminal';
@@ -530,5 +531,48 @@ describe('model stream failures', () => {
     );
 
     expect(getModelStreamFailure(hostile)).toBe('stalled');
+  });
+});
+
+describe('getUserFacingRequestError', () => {
+  const base = 'An error occurred while processing the request';
+  const protectedConfig = { messageFilter: { pii: {} } };
+  const blocked = Object.assign(new Error('403 NEAR AI attestation failed (quote.invalid)'), {
+    status: 403,
+    error: { type: ErrorTypes.NEAR_AI_ATTESTATION_FAILED, code: 'quote.invalid' },
+  });
+
+  it('keeps content-free typed failures under every content filter', () => {
+    const skipped = Object.assign(new Error('skipped'), {
+      name: 'ManualSummarizationSkippedError',
+      reason: 'too_short',
+    });
+    expect(getUserFacingRequestError(base, skipped, protectedConfig)).toBe(
+      JSON.stringify({ type: ErrorTypes.COMPACTION_SKIPPED, reason: 'too_short' }),
+    );
+    const nearai = getUserFacingRequestError(
+      base,
+      new Error('run', { cause: blocked }),
+      protectedConfig,
+    );
+    expect(nearai).toContain(JSON.stringify({ type: ErrorTypes.NEAR_AI_ATTESTATION_FAILED }));
+    expect(nearai).not.toContain('quote.invalid');
+  });
+
+  it('withholds provider text when content protection is active or there is none', () => {
+    expect(getUserFacingRequestError(base, new Error('echoed prompt'), protectedConfig)).toBe(base);
+    expect(getUserFacingRequestError(base, new Error(''))).toBe(base);
+    expect(getUserFacingRequestError(base, 'not an error')).toBe(base);
+  });
+
+  it('localizes LangChain codes and otherwise keeps the provider wording without the docs URL', () => {
+    const limited = Object.assign(new Error('slow down'), { lc_error_code: 'MODEL_RATE_LIMIT' });
+    expect(getUserFacingRequestError(base, limited)).toBe(
+      JSON.stringify({ type: ErrorTypes.MODEL_RATE_LIMIT }),
+    );
+    const plain = new Error(
+      '404 not found\n\nTroubleshooting URL: https://docs.langchain.com/oss/javascript/langchain/errors/OTHER/',
+    );
+    expect(getUserFacingRequestError(base, plain)).toBe(`${base}: 404 not found`);
   });
 });

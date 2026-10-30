@@ -7,6 +7,10 @@ jest.mock('@librechat/agents', () => ({
 }));
 
 jest.mock('@librechat/api', () => ({
+  withoutTraceRefs: jest.requireActual('../../../../packages/api/src/langfuse/trace')
+    .withoutTraceRefs,
+  withoutNearAIReceipts: jest.requireActual('../../../../packages/api/src/nearai/sanitize')
+    .withoutNearAIReceipts,
   prepareToolCallPreviews: jest.fn(() => (messages) => Promise.resolve(messages)),
   createToolCallPartHandler: jest.fn(() => (_req, res) => res.status(404).end()),
   rejectToolCallPreviewWrites: (_req, _res, next) => next(),
@@ -185,5 +189,39 @@ describe('PUT /:conversationId/:messageId', () => {
 
     expect(response.status).toBe(500);
     expect(applyForcedRetention).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /:conversationId verification metadata', () => {
+  it('strips forged reports and dotted aliases while preserving unrelated metadata', async () => {
+    const { saveMessage, saveConvo } = require('~/models');
+    saveMessage.mockImplementation(async (_ctx, message) => message);
+    saveConvo.mockResolvedValue({ conversationId: 'conversation-1' });
+    const app = express();
+    app.use(express.json());
+    app.use((req, _res, next) => {
+      req.user = { id: 'owner' };
+      next();
+    });
+    app.use('/api/messages', require('../messages'));
+    const response = await request(app)
+      .post('/api/messages/conversation-1')
+      .send({
+        messageId: 'forged',
+        text: 'User-authored reply',
+        isUserSubmitted: false,
+        metadata: { nearai: { receipts: [{ status: 'verified' }] }, kept: true },
+        'metadata.nearai': { receipts: [{ status: 'verified' }] },
+        'metadata.nearai.receipts.0.status': 'verified',
+      });
+    expect(response.status).toBe(201);
+    const saved = saveMessage.mock.calls.at(-1)[1];
+    expect(saved).toMatchObject({
+      text: 'User-authored reply',
+      isUserSubmitted: true,
+      metadata: { kept: true },
+    });
+    expect(saved.metadata).not.toHaveProperty('nearai');
+    expect(Object.keys(saved).some((key) => key.startsWith('metadata.nearai'))).toBe(false);
   });
 });

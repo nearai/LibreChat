@@ -1,24 +1,13 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import type { TNearAIReceipt } from 'librechat-data-provider';
 
 /** Signature verification result for one NEAR AI completion, stored on the reply's metadata. */
-export interface NearAIReceipt {
-  completionId: string;
-  model: string;
-  status: 'verified' | 'failed';
-  verifiedAt: string;
-  /** `provider_tee`: signed by the model TEE; `gateway`: signed by the attested Gateway only. */
-  signatureKind?: 'provider_tee' | 'gateway';
-  signingAlgo?: string;
-  signingAddress?: string;
-  /** The signed payload; it commits to the SHA-256 of the exact request and response bytes. */
-  signedText?: string;
-  signature?: string;
-  errorCode?: string;
-}
+export type NearAIReceipt = TNearAIReceipt;
 
 /** Collects the receipts of every NEAR AI completion made while producing one reply. */
 export interface NearAIReceiptCollector {
-  add(receipt: Promise<NearAIReceipt>): void;
+  /** `onTimeout` records a verification still pending when `settle` stops waiting. */
+  add(receipt: Promise<NearAIReceipt>, onTimeout?: () => NearAIReceipt): void;
   /** Waits for pending verifications, bounded so a slow signature lookup cannot hold the reply. */
   settle(timeoutMs?: number): Promise<NearAIReceipt[]>;
 }
@@ -27,23 +16,43 @@ const storage = new AsyncLocalStorage<NearAIReceiptCollector>();
 
 const SETTLE_TIMEOUT_MS = 15_000;
 
+type Entry = {
+  done: Promise<void>;
+  settled: boolean;
+  receipt?: NearAIReceipt;
+  onTimeout?: () => NearAIReceipt;
+};
+
 export function createNearAIReceiptCollector(): NearAIReceiptCollector {
-  const pending: Promise<NearAIReceipt | undefined>[] = [];
+  const entries: Entry[] = [];
   return {
-    add(receipt) {
-      pending.push(receipt.catch(() => undefined));
+    add(receipt, onTimeout) {
+      const entry: Entry = { done: Promise.resolve(), settled: false, onTimeout };
+      entry.done = receipt.then(
+        (value) => {
+          entry.settled = true;
+          entry.receipt = value;
+        },
+        () => {
+          entry.settled = true;
+        },
+      );
+      entries.push(entry);
     },
     async settle(timeoutMs = SETTLE_TIMEOUT_MS) {
       let timer: NodeJS.Timeout | undefined;
-      const timeout = new Promise<'timeout'>((resolve) => {
-        timer = setTimeout(() => resolve('timeout'), timeoutMs);
+      const timeout = new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, timeoutMs);
       });
-      const results = await Promise.race([Promise.all(pending), timeout]);
+      await Promise.race([Promise.all(entries.map((entry) => entry.done)), timeout]);
       clearTimeout(timer);
-      if (results === 'timeout') {
-        return [];
+      // Keep finished receipts; a late one is recorded as timed out rather than dropped.
+      const receipts: NearAIReceipt[] = [];
+      for (const entry of entries) {
+        const receipt = entry.settled ? entry.receipt : entry.onTimeout?.();
+        if (receipt) receipts.push(receipt);
       }
-      return results.filter((receipt): receipt is NearAIReceipt => receipt != null);
+      return receipts;
     },
   };
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { omit } from 'lodash';
 import { useRecoilValue } from 'recoil';
 import { Alert, Button, TextareaAutosize } from '@librechat/client';
 import { useUpdateMessageContentMutation } from 'librechat-data-provider/react-query';
@@ -139,6 +140,7 @@ export default function EditContentParts({
           }
           return {
             ...currentMessage,
+            metadata: omit(currentMessage.metadata, 'nearai'),
             content: currentMessage.content.map((part, localIndex) => {
               const change = changedByLocalIndex.get(localIndex);
               if (!part || !change || part.type !== change.type) {
