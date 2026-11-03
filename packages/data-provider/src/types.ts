@@ -1250,6 +1250,23 @@ export type TUpdateFeedbackResponse = {
   feedback?: TMinimalFeedback;
 };
 
+/** The checks behind a NEAR AI deployment proof: the Gateway, the model's Intel TDX CPU
+ *  enclave, its NVIDIA GPU evidence, and the model signing key and measurements. */
+export type TNearAIDeploymentCheck = 'gateway' | 'cpu' | 'gpu' | 'key';
+
+/**
+ * `not_provided`: the model's TEE supplied no evidence for the check, which the SDK's
+ * default policy accepts (only GPU evidence is optional). `not_checked`: verification
+ * ended before this check's result was known.
+ */
+export type TNearAICheckOutcome = 'passed' | 'failed' | 'not_provided' | 'not_checked';
+
+/** The attested model key that signs replies; `signingAddress` matches receipts'. */
+export type TNearAISigningKey = {
+  signingAlgo: 'ed25519' | 'ecdsa';
+  signingAddress: string;
+};
+
 /** NEAR AI deployment attestation, verified server-side by the inference SDK. */
 export type TNearAIAttestationResponse =
   | { enabled: false }
@@ -1260,6 +1277,10 @@ export type TNearAIAttestationResponse =
       checkedAt: string;
       errorCode?: string;
       message?: string;
+      /** Outcome of each check. Absent from servers that predate it. */
+      checks?: Record<TNearAIDeploymentCheck, TNearAICheckOutcome>;
+      /** The verified session's model key. Present only when `status` is `verified`. */
+      signingKey?: TNearAISigningKey;
       /** NEAR AI verify page; the shields link to it with the model and receipts. */
       verifyUrl?: string;
     };
