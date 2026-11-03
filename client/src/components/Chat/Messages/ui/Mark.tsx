@@ -54,3 +54,69 @@ export const ProcessMark = memo(function ProcessMark({
 export function WaitMark() {
   return <ProcessMark working className="lc-live-mark absolute -top-3.25 -left-0.5 size-4" />;
 }
+
+/** The NEAR AI mark at full resolution, in the tile's coordinates (the same artwork as
+ *  `/assets/nearai-mark.svg`), which the marker line and the shine below are measured in. */
+const NEAR_MARK =
+  'M292.106 82.1357C283.445 82.1357 275.379 86.5848 270.847 93.9047L221.912 165.811C220.318 168.188 220.971 171.382 223.353 172.96C225.292 174.234 227.866 174.082 229.633 172.58L277.799 131.227C278.605 130.504 279.834 130.581 280.545 131.379C280.872 131.74 281.044 132.216 281.044 132.691V262.169C281.044 263.233 280.18 264.089 279.085 264.089C278.509 264.089 277.952 263.842 277.587 263.404L132.014 90.8817C127.271 85.3489 120.318 82.1548 112.982 82.1357H107.893C94.1229 82.1357 82.9648 93.1822 82.9648 106.814V289.167C82.9648 302.799 94.1229 313.846 107.893 313.846C116.554 313.846 124.62 309.397 129.153 302.077L178.087 230.17C179.681 227.793 179.028 224.599 176.646 223.021C174.707 221.747 172.133 221.899 170.366 223.401L122.2 264.754C121.394 265.477 120.165 265.401 119.454 264.602C119.128 264.241 118.955 263.766 118.955 263.29V133.775C118.955 132.71 119.819 131.854 120.914 131.854C121.49 131.854 122.047 132.102 122.412 132.539L267.966 305.1C272.709 310.632 279.662 313.827 286.998 313.846H292.087C305.857 313.846 317.034 302.799 317.034 289.167V106.833C317.034 93.2012 305.876 82.1548 292.106 82.1548V82.1357Z';
+
+/** The marker's center line through the mark (Trace Commons' first run, `GlassBrandMarkDrawing`):
+ *  from inside the lower-left hook, down and up the left stem, along the diagonal, up the right
+ *  stem and into the upper-right hook. Starting inside the lower hook keeps the pen's round end
+ *  off the diagonal beside it. The tip's `offset-path` in style.css is the same line. */
+const MARKER_LINE = 'M167.5 234.6L101 312L101 86L299 320L299 84L226 170';
+
+/**
+ * The NEAR AI mark drawn like a marker, as the Trace Commons first run opens: a 44-unit pen inks
+ * the mark in along its center line with a glowing tip at its front, then a light band crosses
+ * it, and again every 15 seconds. The timing and the brand blue live in style.css
+ * (`.lc-drawn-mark`); under reduced motion the mark is simply there.
+ */
+export const DrawnMark = memo(function DrawnMark({ className }: { className?: string }) {
+  const id = useId();
+  const inkId = `${id}ink`;
+  const clipId = `${id}clip`;
+  const shineId = `${id}shine`;
+  return (
+    <svg
+      viewBox="82.96 82.13 234.08 231.72"
+      aria-hidden="true"
+      overflow="visible"
+      className={cn('lc-drawn-mark', className)}
+    >
+      <defs>
+        <mask id={inkId}>
+          <path
+            className="lc-drawn-mark-ink"
+            d={MARKER_LINE}
+            pathLength={1}
+            fill="none"
+            strokeWidth={44}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </mask>
+        <clipPath id={clipId}>
+          <path d={NEAR_MARK} />
+        </clipPath>
+        <linearGradient id={shineId}>
+          <stop className="lc-drawn-mark-light" offset="0" stopOpacity="0" />
+          <stop className="lc-drawn-mark-light" offset="0.5" stopOpacity="0.7" />
+          <stop className="lc-drawn-mark-light" offset="1" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={NEAR_MARK} fill="currentColor" mask={`url(#${inkId})`} />
+      <g clipPath={`url(#${clipId})`}>
+        <rect
+          className="lc-drawn-mark-shine"
+          x="0"
+          y="60"
+          width="110"
+          height="280"
+          fill={`url(#${shineId})`}
+        />
+      </g>
+      <circle className="lc-drawn-mark-tip" r="10.5" />
+    </svg>
+  );
+});

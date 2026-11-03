@@ -262,14 +262,16 @@ interface:
   customWelcome: 'Welcome to Near AI private Chat'
   customWelcomeSubtitle: "What's on your mind?"
   # The sidebar leads with the NEAR AI wordmark (logo kit Primary, white on dark and black on
-  # light) and the brand-blue "N" mark from the tile, in place of the app title. A reply in
-  # progress shows Ironclaw's NEAR process indicator beside its streaming thought and while it
-  # waits for output.
+  # light) and the brand-blue "N" mark from the tile, in place of the app title. The welcome
+  # greeting leads with the N inked in like a marker, as the Trace Commons first run opens. A
+  # reply in progress shows Ironclaw's NEAR process indicator beside its streaming thought and
+  # while it waits for output.
   brand:
     mark: '/assets/nearai-mark.svg'
     wordmark:
       light: '/assets/nearai-wordmark-black.svg'
       dark: '/assets/nearai-wordmark-white.svg'
+    greetingMark: 'near'  # the N drawn like a marker over the welcome greeting, then a light band across it every 15s
     indicator: 'near'     # the N, a light chasing its spine, leads the live thought and replaces the waiting dot; settled thoughts carry no glyph
   messageAuthor: false    # replies carry no name-and-icon line; the thread reads as one voice
   modelSelect: true

@@ -287,6 +287,65 @@ describe('Landing greeting', () => {
     expect(screen.queryByText("What's on your mind?")).not.toBeInTheDocument();
   });
 
+  it('leads the greeting with the brand mark, rising with it', () => {
+    mockInterface = {
+      customWelcome: 'Welcome to Near AI private Chat',
+      brand: { mark: '/assets/nearai-mark.svg' },
+    };
+
+    renderLanding();
+
+    const mark = screen.getByTestId('landing-brand-mark');
+    const headline = screen.getByText('Welcome to Near AI private Chat');
+    expect(mark).toHaveAttribute('src', '/assets/nearai-mark.svg');
+    /** Decorative: the greeting and the sidebar already name the brand. */
+    expect(mark).toHaveAttribute('alt', '');
+    expect(mark).toHaveClass('animate-greeting-rise', 'motion-reduce:animate-none');
+    expect(mark.compareDocumentPosition(headline) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  /** `greetingMark: near` draws the NEAR mark inked in like a marker instead of the image. */
+  it('draws the NEAR mark like a marker when the brand asks for it', () => {
+    mockInterface = {
+      customWelcome: 'Welcome to Near AI private Chat',
+      brand: { mark: '/assets/nearai-mark.svg', greetingMark: 'near' },
+    };
+
+    const { container } = renderLanding();
+
+    const drawn = container.querySelector('svg.lc-drawn-mark');
+    const headline = screen.getByText('Welcome to Near AI private Chat');
+    expect(drawn).not.toBeNull();
+    expect(drawn).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.queryByTestId('landing-brand-mark')).not.toBeInTheDocument();
+    expect(
+      (drawn as Element).compareDocumentPosition(headline) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('draws no mark unless the deployment configures one', () => {
+    mockInterface = { customWelcome: 'Hello' };
+
+    renderLanding();
+
+    expect(screen.queryByTestId('landing-brand-mark')).not.toBeInTheDocument();
+  });
+
+  it('keeps the mark off a temporary chat and an agent, which carry their own icons', () => {
+    mockInterface = { brand: { mark: '/assets/nearai-mark.svg' } };
+
+    const temporary = renderLanding({ isTemporary: true });
+    expect(screen.queryByTestId('landing-brand-mark')).not.toBeInTheDocument();
+    temporary.unmount();
+
+    mockConversation = { endpoint: 'agents', agent_id: 'agent-1' };
+    mockAgentsMap = { 'agent-1': { id: 'agent-1', name: 'Portal Remote Agent' } };
+    renderLanding();
+    expect(screen.queryByTestId('landing-brand-mark')).not.toBeInTheDocument();
+  });
+
   it('fades an agent name up the same way', () => {
     mockConversation = { endpoint: 'agents', agent_id: 'agent-1' };
     mockAgentsMap = { 'agent-1': { id: 'agent-1', name: 'Portal Remote Agent' } };

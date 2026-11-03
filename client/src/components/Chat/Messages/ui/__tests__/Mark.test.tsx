@@ -1,6 +1,6 @@
 import React from 'react';
 import { render } from '@testing-library/react';
-import { ProcessMark, WaitMark } from '../Mark';
+import { DrawnMark, ProcessMark, WaitMark } from '../Mark';
 
 describe('ProcessMark', () => {
   it('draws the solid mark at rest, with no light to chase', () => {
@@ -54,5 +54,50 @@ describe('WaitMark', () => {
     expect(container.querySelector('.result-thinking')).toBe(
       container.querySelector('p')?.lastChild,
     );
+  });
+});
+
+describe('DrawnMark', () => {
+  /** The pen inks the mark in: the mark is filled only where the marker's stroke has reached, so
+   *  the mask's stroke is the whole drawing. Its length is normalized, so style.css can run the
+   *  dash from just past the start back to it without knowing the line's length. */
+  it('reveals the mark through a marker stroke along its center line', () => {
+    const { container } = render(<DrawnMark />);
+    const svg = container.querySelector('svg');
+    const mask = container.querySelector('mask');
+    const ink = container.querySelector('.lc-drawn-mark-ink');
+    const mark = container.querySelector(`path[mask="url(#${mask?.id})"]`);
+
+    expect(svg).toHaveClass('lc-drawn-mark');
+    expect(svg).toHaveAttribute('aria-hidden', 'true');
+    expect(mark).toHaveAttribute('fill', 'currentColor');
+    expect(ink?.parentElement).toBe(mask);
+    expect(ink).toHaveAttribute('d', 'M167.5 234.6L101 312L101 86L299 320L299 84L226 170');
+    expect(ink).toHaveAttribute('pathLength', '1');
+    expect(ink).toHaveAttribute('stroke-width', '44');
+    expect(ink).toHaveAttribute('stroke-linecap', 'round');
+  });
+
+  it('keeps the light band inside the mark and the pen tip on top of it', () => {
+    const { container } = render(<DrawnMark />);
+    const clip = container.querySelector('clipPath');
+    const shine = container.querySelector('.lc-drawn-mark-shine');
+    const tip = container.querySelector('.lc-drawn-mark-tip');
+
+    expect(shine?.parentElement).toHaveAttribute('clip-path', `url(#${clip?.id})`);
+    expect(tip?.tagName.toLowerCase()).toBe('circle');
+    expect(container.querySelector('svg')?.lastElementChild).toBe(tip);
+  });
+
+  it('gives each mark its own mask and clip', () => {
+    const { container } = render(
+      <>
+        <DrawnMark />
+        <DrawnMark />
+      </>,
+    );
+    const ids = Array.from(container.querySelectorAll('mask, clipPath')).map((def) => def.id);
+
+    expect(new Set(ids).size).toBe(4);
   });
 });

@@ -1638,6 +1638,93 @@ html {
   }
 }
 
+/* The NEAR AI mark drawn like a marker on the welcome screen (Chat/Messages/ui/Mark.tsx
+   `DrawnMark`), after Trace Commons' first run (`WelcomeScreenLayout`): the pen inks the mark in
+   along its center line over one second after a 0.2s beat, on a slow-in, slow-out curve, with a
+   white tip glowing at its front; a light band crosses the mark at 1.5s and every 15s after.
+   Custom CSS exception: the motion animates SVG stroke dashes, a motion path and a skewed band,
+   none of which a utility expresses. The brand blue is the mark's artwork, as for the process
+   mark above: the first run's light-mode blue on a light page, its own blue on a dark one. */
+@keyframes lc-drawn-mark-ink {
+  from {
+    stroke-dashoffset: 1.05;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes lc-drawn-mark-tip-move {
+  from {
+    offset-distance: 1.4%;
+  }
+  to {
+    offset-distance: 100%;
+  }
+}
+@keyframes lc-drawn-mark-tip-fade {
+  0% {
+    opacity: 0;
+  }
+  5%,
+  92% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes lc-drawn-mark-shine {
+  0% {
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+    transform: translateX(-240px) skewX(-18deg);
+  }
+  9%,
+  100% {
+    transform: translateX(470px) skewX(-18deg);
+  }
+}
+.lc-drawn-mark {
+  color: #0070c6;
+  flex: none;
+}
+.dark .lc-drawn-mark {
+  color: #0091fd;
+}
+/* A dash as long as the whole line, offset just past its start, then drawn back to it; white,
+   so the mask it draws lets the whole mark through. */
+.lc-drawn-mark-ink {
+  animation: lc-drawn-mark-ink 1s cubic-bezier(0.65, 0, 0.35, 1) 0.2s both;
+  stroke: #fff;
+  stroke-dasharray: 1 2;
+  stroke-dashoffset: 0;
+}
+.lc-drawn-mark-light {
+  stop-color: #fff;
+}
+/* The tip leads the stroke's center by 14 of the line's ~983 units, inside the pen's round end. */
+.lc-drawn-mark-tip {
+  animation:
+    lc-drawn-mark-tip-move 1s cubic-bezier(0.65, 0, 0.35, 1) 0.2s both,
+    lc-drawn-mark-tip-fade 1s linear 0.2s both;
+  fill: #fff;
+  filter: drop-shadow(0 0 17px currentColor);
+  offset-path: path('M167.5 234.6L101 312L101 86L299 320L299 84L226 170');
+  offset-rotate: 0deg;
+}
+.lc-drawn-mark-shine {
+  animation: lc-drawn-mark-shine 15s linear 1.5s infinite both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lc-drawn-mark-ink {
+    animation: none;
+  }
+  .lc-drawn-mark-tip,
+  .lc-drawn-mark-shine {
+    display: none;
+  }
+}
+
 /* Each live site draws the mark beside the glyph it replaces and the root picks one, so no row
    subscribes to the config. Settled thoughts keep no glyph, and drop the slot that held it so
    the label sits flush with the reply. */

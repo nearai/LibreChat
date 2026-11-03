@@ -10,6 +10,7 @@ import { useLocalize, useAuthContext, useGreeting } from '~/hooks';
 import { useChatSettings } from '~/Providers/ChatSettingsContext';
 import AgentContact from '~/components/Agents/AgentContact';
 import ConvoIcon from '~/components/Endpoints/ConvoIcon';
+import { DrawnMark } from './Messages/ui/Mark';
 
 const containerClassName =
   'shadow-stroke relative flex h-full items-center justify-center rounded-full bg-presentation text-text-primary dark:after:shadow-none ';
@@ -51,9 +52,6 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
   const { isTemporary } = useChatSettings();
 
   const [textHasMultipleLines, setTextHasMultipleLines] = useState(false);
-  const [lineCount, setLineCount] = useState(1);
-  const [contentHeight, setContentHeight] = useState(0);
-  const contentRef = useRef<HTMLDivElement>(null);
   const headlineRef = useRef<HTMLParagraphElement>(null);
 
   const endpointType = useMemo(() => {
@@ -102,28 +100,10 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
 
   const scheduledGreeting = useGreeting(user?.name);
 
-  const getDynamicMargin = useMemo(() => {
-    let margin = 'mb-0';
-
-    if (lineCount > 2 || (description && description.length > 100)) {
-      margin = 'mb-10';
-    } else if (lineCount > 1 || (description && description.length > 0)) {
-      margin = 'mb-6';
-    } else if (textHasMultipleLines) {
-      margin = 'mb-4';
-    }
-
-    if (contentHeight > 200) {
-      margin = 'mb-16';
-    } else if (contentHeight > 150) {
-      margin = 'mb-12';
-    }
-
-    return margin;
-  }, [lineCount, description, textHasMultipleLines, contentHeight]);
-
   const resolvedWelcome = withUserName(customWelcome, user?.name);
   const subtitle = isTemporary ? undefined : withUserName(customSubtitle, user?.name);
+  /** The deployment's brand mark leads its own greeting; a temporary chat keeps its own icon. */
+  const brand = isTemporary ? undefined : startupConfig?.interface?.brand;
 
   const greetingText = isTemporary
     ? localize('com_ui_temporary')
@@ -138,24 +118,22 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
     }
     const style = getComputedStyle(element);
     const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2;
-    const count = Math.round(element.offsetHeight / lineHeight);
-    setTextHasMultipleLines(count > 1);
-    setLineCount(count);
+    setTextHasMultipleLines(Math.round(element.offsetHeight / lineHeight) > 1);
   }, [headline, remScale]);
 
-  useEffect(() => {
-    if (contentRef.current) {
-      setContentHeight(contentRef.current.offsetHeight);
-    }
-  }, [lineCount, description, subtitle, selectedAgent, remScale]);
-
   return (
-    /* On a phone the composer sits at the foot of the screen, so the greeting settles just above
-       it rather than floating mid-screen; from `sm` up the two are centered together. */
+    /* The greeting sits a fixed gap above the composer, however tall it is. On a phone the
+       composer is at the foot of the screen and this column fills the space above it; with the
+       composer centered (`centerFormOnLanding`) this column has no height of its own, and the
+       greeting is anchored to its foot and grows upward, so a mark, a subtitle or a long
+       description can never run into the composer. */
     <div
-      className={`flex h-full transform-gpu flex-col items-center justify-end pb-4 transition-all duration-200 sm:justify-center sm:pb-16 ${centerFormOnLanding ? 'max-h-full sm:max-h-0' : 'max-h-full'} ${getDynamicMargin}`}
+      className={cn(
+        'flex h-full max-h-full transform-gpu flex-col items-center justify-end pb-4 transition-all duration-200',
+        centerFormOnLanding ? 'sm:max-h-0 sm:pb-8' : 'sm:justify-center sm:pb-16',
+      )}
     >
-      <div ref={contentRef} className="flex flex-col items-center gap-0 p-2">
+      <div className="flex flex-col items-center gap-0 p-2">
         <div
           className={`flex ${textHasMultipleLines ? 'flex-col' : 'flex-col md:flex-row'} items-center justify-center gap-2`}
         >
@@ -206,6 +184,19 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
           ) : (
             /* The key replays the entrance when the greeting changes. */
             <div key={greetingText} className="flex flex-col items-center">
+              {/* Decorative either way: the greeting says the same, and the sidebar names the brand. */}
+              {brand?.greetingMark === 'near' ? (
+                <DrawnMark className="mb-6 size-16 sm:size-20" />
+              ) : (
+                brand?.mark && (
+                  <img
+                    src={brand.mark}
+                    alt=""
+                    data-testid="landing-brand-mark"
+                    className="animate-greeting-rise mb-6 size-16 motion-reduce:animate-none sm:size-20"
+                  />
+                )
+              )}
               <p
                 ref={headlineRef}
                 dir="auto"

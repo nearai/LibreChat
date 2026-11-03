@@ -2650,13 +2650,16 @@ export const interfaceSchema = z
     /** A line set under the landing greeting, with `{{user.name}}` filled in like `customWelcome`. */
     customWelcomeSubtitle: z.string().optional(),
     /** The marks the sidebar shows in place of the app title: an optional mark beside a wordmark
-     *  drawn per color mode. Each is an image path or URL the client loads. `indicator` picks what
-     *  a reply in progress shows while it waits and beside a streaming thought: LibreChat's
-     *  breathing dot and lightbulb (the default) or the NEAR "N" with a light chasing its spine. */
+     *  drawn per color mode. Each is an image path or URL the client loads. `greetingMark` picks
+     *  what leads the welcome greeting: the `mark` image (`image`, the default) or the NEAR AI
+     *  mark inked in like a marker stroke (`near`). `indicator` picks what a reply in progress
+     *  shows while it waits and beside a streaming thought: LibreChat's breathing dot and
+     *  lightbulb (the default) or the NEAR "N" with a light chasing its spine. */
     brand: z
       .object({
         mark: z.string().optional(),
         wordmark: z.object({ light: z.string(), dark: z.string() }).optional(),
+        greetingMark: z.enum(['image', 'near']).optional(),
         indicator: z.enum(['dot', 'near']).optional(),
       })
       .optional(),
