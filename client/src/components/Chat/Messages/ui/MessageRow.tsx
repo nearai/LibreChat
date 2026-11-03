@@ -2,6 +2,7 @@ import { Zap } from 'lucide-react';
 import type { ReactNode } from 'react';
 import MessageTimestamp from './MessageTimestamp';
 import HeaderLabel from './HeaderLabel';
+import { ProcessMark } from './Mark';
 import { cn } from '~/utils';
 
 type MessageRowProps = {
@@ -30,6 +31,9 @@ type MessageRowProps = {
   /** Outline the user-side bubble instead of filling it: content the host
    *  delivered rather than words someone typed. Implied by `systemLabel`. */
   outlined?: boolean;
+  /** This reply is being produced. A brand that chooses NEAR's process mark shows it, working,
+   *  on the reply line until the reply completes (style.css `.lc-reply-mark`). */
+  working?: boolean;
   className?: string;
 };
 
@@ -55,7 +59,12 @@ function renderAuthorHeader({
   align: 'start' | 'end';
 }) {
   return (
-    <h2 className={authorHeaderClasses[align]}>
+    /* `data-author-header` lets `interface.messageAuthor: false` take an agent's name line off
+       the page (style.css) without a config subscription in every row. */
+    <h2
+      className={authorHeaderClasses[align]}
+      data-author-header={align === 'start' ? 'agent' : undefined}
+    >
       {align === 'end' && (
         <MessageTimestamp value={timestamp} className="mr-auto shrink-0 font-normal" />
       )}
@@ -104,6 +113,7 @@ export default function MessageRow({
   systemLabel,
   showAuthor = false,
   outlined = false,
+  working = false,
 }: MessageRowProps) {
   // Same column as ChatForm: max-width plus `sm:px-2`, so the body lines
   // up with the composer surface rather than the form's outer box.
@@ -150,6 +160,11 @@ export default function MessageRow({
             {label}
             <MessageTimestamp value={timestamp} />
           </h2>
+        )}
+        {working && !isUserSide && !hasParallelContent && (
+          /* On the reply line, above the first content: absolutely placed so the reply does not
+             move when the mark leaves at completion. */
+          <ProcessMark working className="lc-reply-mark absolute -top-7 left-0 size-5" />
         )}
         {!hasParallelContent &&
           !isSystem &&

@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import * as Ariakit from '@ariakit/react';
-import { TooltipAnchor } from '@librechat/client';
 import { ListTodo, Maximize2, Minimize2, Square, X } from 'lucide-react';
+import { TooltipAnchor, chromeIconButtonClasses } from '@librechat/client';
 import { RECENT_SUBAGENT_WINDOW_MS } from './rows';
 import useBackgroundTasks from './useTasks';
 import { useLocalize } from '~/hooks';
@@ -103,7 +103,7 @@ function BackgroundTasksButton({
             store={popover}
             aria-label={triggerLabel}
             data-testid="header-background-tasks-button"
-            className="border-border-chrome bg-presentation text-text-primary hover:bg-surface-tertiary aria-expanded:bg-surface-tertiary relative inline-flex size-9 flex-shrink-0 items-center justify-center rounded-xl border transition-all ease-in-out"
+            className={chromeIconButtonClasses()}
           >
             <ListTodo className="icon-md" aria-hidden="true" />
             {(activeCount > 0 || awaitingCount > 0 || failedCount > 0 || incomplete) && (

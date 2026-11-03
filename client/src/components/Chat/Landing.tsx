@@ -26,7 +26,7 @@ function getTextSizeClass(text: string | undefined | null) {
   }
 
   if (text.length < 56) {
-    return 'text-2xl sm:text-4xl';
+    return 'text-2xl sm:text-[1.75rem] sm:leading-[2.125rem]';
   }
 
   if (text.length < 70) {
@@ -142,39 +142,45 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
         <div
           className={`flex ${textHasMultipleLines ? 'flex-col' : 'flex-col md:flex-row'} items-center justify-center gap-2`}
         >
-          <div className={`relative size-10 justify-center ${textHasMultipleLines ? 'mb-2' : ''}`}>
-            {isTemporary ? (
-              <div className={containerClassName}>
-                <HatGlasses className="text-text-primary h-2/3 w-2/3" aria-hidden="true" />
-              </div>
-            ) : (
-              <ConvoIcon
-                agentsMap={agentsMap}
-                assistantMap={assistantMap}
-                conversation={conversation}
-                endpointsConfig={endpointsConfig}
-                containerClassName={containerClassName}
-                context="landing"
-                className="text-text-primary h-2/3 w-2/3"
-                size={41}
-              />
-            )}
-            {startupConfig?.showBirthdayIcon && (
-              <TooltipAnchor
-                className="absolute right-2 bottom-[1.6875rem]"
-                description={localize('com_ui_happy_birthday')}
-                aria-label={localize('com_ui_happy_birthday')}
-              >
-                <BirthdayIcon />
-              </TooltipAnchor>
-            )}
-          </div>
+          {/* A plain greeting stands alone, as the screen's one headline; the icon introduces an
+              agent, an assistant, a branded spec or a temporary chat. */}
+          {(isTemporary || name) && (
+            <div
+              className={`relative size-10 justify-center ${textHasMultipleLines ? 'mb-2' : ''}`}
+            >
+              {isTemporary ? (
+                <div className={containerClassName}>
+                  <HatGlasses className="text-text-primary h-2/3 w-2/3" aria-hidden="true" />
+                </div>
+              ) : (
+                <ConvoIcon
+                  agentsMap={agentsMap}
+                  assistantMap={assistantMap}
+                  conversation={conversation}
+                  endpointsConfig={endpointsConfig}
+                  containerClassName={containerClassName}
+                  context="landing"
+                  className="text-text-primary h-2/3 w-2/3"
+                  size={41}
+                />
+              )}
+              {startupConfig?.showBirthdayIcon && (
+                <TooltipAnchor
+                  className="absolute right-2 bottom-[1.6875rem]"
+                  description={localize('com_ui_happy_birthday')}
+                  aria-label={localize('com_ui_happy_birthday')}
+                >
+                  <BirthdayIcon />
+                </TooltipAnchor>
+              )}
+            </div>
+          )}
           {((isAgent || isAssistant) && name) || name ? (
             <div className="flex flex-col items-center gap-0 p-2">
               <SplitText
                 key={`split-text-${name}`}
                 text={name}
-                className={`${getTextSizeClass(name)} text-text-primary font-medium`}
+                className={`${getTextSizeClass(name)} text-text-primary font-semibold tracking-tight`}
                 delay={50}
                 textAlign="center"
                 animationFrom={greetingAnimationFrom}
@@ -189,7 +195,7 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
             <SplitText
               key={`split-text-${greetingText}${user?.name ? '-user' : ''}`}
               text={greetingText}
-              className={`${getTextSizeClass(greetingText)} text-text-primary font-medium`}
+              className={`${getTextSizeClass(greetingText)} text-text-primary font-semibold tracking-tight`}
               delay={50}
               textAlign="center"
               animationFrom={greetingAnimationFrom}

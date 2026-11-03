@@ -99,8 +99,9 @@ export const ThinkingContent: FC<{
 });
 
 /**
- * ThinkingButton - Toggle button for expanding/collapsing thinking content
- * Shows lightbulb icon by default, chevron on hover
+ * ThinkingButton - Toggle button for expanding/collapsing thinking content.
+ * Leads with the lightbulb (which a brand with its own process mark drops, glyph slot and all;
+ * see `lc-reasoning-slot` in style.css) and ends the label with the disclosure caret.
  * Shared between legacy Thinking component and modern ContentParts
  */
 export const ThinkingButton = memo(
@@ -151,18 +152,8 @@ export const ThinkingButton = memo(
            *  second, larger kind of row beside them. */
           className="group/button tool-status-text flex flex-1 items-center justify-start rounded-lg pr-10"
         >
-          <span className={cn(ROW_GLYPH_SLOT, 'relative mr-2')}>
-            <Lightbulb
-              className="icon-sm text-text-secondary absolute opacity-100 transition-opacity group-hover/button:opacity-0"
-              aria-hidden="true"
-            />
-            <ChevronDown
-              className={cn(
-                'icon-sm text-text-primary absolute transform-gpu opacity-0 transition-all duration-300 group-hover/button:opacity-100',
-                isExpanded && 'rotate-180',
-              )}
-              aria-hidden="true"
-            />
+          <span className={cn(ROW_GLYPH_SLOT, 'lc-reasoning-slot relative mr-2')}>
+            <Lightbulb className="icon-sm text-text-secondary" aria-hidden="true" />
           </span>
           {/* The sweep rides the label row itself. That row is a flex item, so
               `.shimmer`'s `inline-block` is blockified away and the text sits
@@ -198,6 +189,14 @@ export const ThinkingButton = memo(
               label
             )}
           </span>
+          {/* The caret follows the label it discloses rather than standing in for the glyph. */}
+          <ChevronDown
+            className={cn(
+              'icon-sm text-text-secondary group-hover/button:text-text-primary ml-1 shrink-0 transform-gpu transition-transform duration-300 motion-reduce:transition-none',
+              isExpanded && 'rotate-180',
+            )}
+            aria-hidden="true"
+          />
         </button>
         {content && showCopyButton && isExpanded && (
           <CopyButton
@@ -228,7 +227,7 @@ export const ThinkingLabel = memo(({ label, title }: { label: string; title?: st
   return (
     <div className="mb-2 pt-2 pb-2">
       <div className="tool-status-text flex w-full items-center justify-start" title={title}>
-        <span className={cn(ROW_GLYPH_SLOT, 'relative mr-2')}>
+        <span className={cn(ROW_GLYPH_SLOT, 'lc-reasoning-slot relative mr-2')}>
           <Lightbulb className="icon-sm text-text-secondary" aria-hidden="true" />
         </span>
         <span className="text-text-secondary min-w-0 truncate text-left font-medium">{label}</span>

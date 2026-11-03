@@ -36,6 +36,7 @@ export const clickHouseLightTheme: IThemeRGB = {
   'rgb-text-secondary-alt': '83 87 95', // #53575f (palette.slate.700)
   'rgb-text-tertiary': '83 87 95', // #53575f (palette.slate.700)
   'rgb-text-muted': '105 110 121', // #696e79 (text.muted)
+  'rgb-text-placeholder': '83 87 95', // matching text-tertiary
   'rgb-badge-label': '105 110 121', // #696e79 (badge.opaque.color.text.default)
   'rgb-text-warning': '163 60 0', // #a33c00 (text.warning)
   'rgb-text-destructive': '193 0 0', // #c10000 (text.danger)
@@ -122,6 +123,7 @@ export const clickHouseLightTheme: IThemeRGB = {
   'rgb-alert-error-border': '255 233 233', // #ffe9e9 (Click UI alerts draw no edge, so it matches the fill)
   // Layering roles
   'rgb-surface-canvas': '255 255 255', // #ffffff (background.default)
+  'rgb-surface-shell': '246 247 250', // matching surface-primary-alt
   'rgb-surface-user-message': '230 231 233', // #e6e7e9 (palette.slate.100, the sidebar.main.navigation.item active step; Click UI has no chat bubble)
   'rgb-surface-card': '255 255 255', // #ffffff (card.secondary.color.background.default)
   'rgb-surface-card-hover': '246 247 250', // #f6f7fa (card.secondary.color.background.hover)
@@ -217,6 +219,7 @@ export const clickHouseDarkTheme: IThemeRGB = {
   'rgb-text-secondary-alt': '179 182 189', // #b3b6bd (text.muted)
   'rgb-text-tertiary': '179 182 189', // #b3b6bd (text.muted)
   'rgb-text-muted': '179 182 189', // #b3b6bd (text.muted)
+  'rgb-text-placeholder': '179 182 189', // matching text-tertiary
   'rgb-badge-label': '179 182 189', // #b3b6bd (badge.opaque.color.text.default)
   'rgb-text-warning': '255 184 143', // #ffb88f (text.warning)
   'rgb-text-destructive': '255 186 186', // #ffbaba (text.danger)
@@ -305,6 +308,7 @@ export const clickHouseDarkTheme: IThemeRGB = {
   'rgb-alert-error-border': '76 32 29', // #4c201d (Click UI alerts draw no edge, so it matches the fill)
   // Layering roles
   'rgb-surface-canvas': '31 31 28', // #1f1f1c (background.default)
+  'rgb-surface-shell': '40 40 40', // matching surface-primary-alt
   'rgb-surface-user-message': '50 50 50', // #323232 (palette.neutral.712)
   'rgb-surface-card': '31 31 28', // #1f1f1c (card.secondary.color.background.default)
   'rgb-surface-card-hover': '40 40 40', // #282828 (card.secondary.color.background.hover)

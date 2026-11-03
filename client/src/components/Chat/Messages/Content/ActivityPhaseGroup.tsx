@@ -370,7 +370,12 @@ function LivePhaseHeader({
 
   return (
     <>
-      <RailGlyph hover={railHover}>
+      {/** A span that is only reasoning so far is the live thoughts row, so it drops its glyph
+       *  slot wherever the settled thoughts row does (`lc-reasoning-slot`). */}
+      <RailGlyph
+        hover={railHover}
+        className={iconNames.length === 0 ? 'lc-reasoning-slot' : undefined}
+      >
         {iconNames.length === 0 ? (
           /** A span that is only reasoning so far has no tool to show; it takes
            *  the glyph the reasoning row itself uses. */
@@ -401,14 +406,16 @@ function LivePhaseHeader({
        *  separate element rather than part of the line's text so the
        *  disclosure's name keeps a space before it and the ticker still
        *  animates one sentence at a time. */}
-      <span className="flex min-w-0 flex-1 items-center gap-1.5">
+      {/** A span that is only reasoning so far is the live "Thinking" row: its label hugs the
+       *  text so the disclosure caret follows it, as it does on the settled thoughts row. */}
+      <span className={cn('flex min-w-0 items-center gap-1.5', iconNames.length > 0 && 'flex-1')}>
         <PhaseLabel
           text={painted.text}
           source={painted.source}
           failed={false}
           animate={animate}
           live
-          grow={combo === ''}
+          grow={combo === '' && iconNames.length > 0}
           lineId={lineId}
         />
         {combo !== '' && (

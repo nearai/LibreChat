@@ -59,6 +59,8 @@ import usePastedTextEdit from '~/hooks/Files/usePastedTextEdit';
 import useAskAnswerMode from '~/hooks/Input/useAskAnswerMode';
 import AskUserQuestionPopover from './AskUserQuestionPopover';
 import useComposerItems from '~/hooks/Input/useComposerItems';
+import useDrawerViewport from '~/hooks/Nav/useDrawerViewport';
+import ModelSelector from '../Menus/Endpoints/ModelSelector';
 import useAttachTarget from '~/hooks/Input/useAttachTarget';
 import Hints, { composerHintId } from './Composer/Hints';
 import PastedTextDialog from './Files/PastedTextDialog';
@@ -223,6 +225,8 @@ const ChatForm = memo(function ChatForm({
   } = useAddedChatContext();
   const assistantMap = useAssistantsMapContext();
   const { data: startupConfig } = useGetStartupConfig();
+  /** The header carries the model picker on small screens; the composer carries it on desktop. */
+  const isSmallScreen = useDrawerViewport();
 
   const endpoint = useMemo(
     () => conversation?.endpointType ?? conversation?.endpoint,
@@ -535,6 +539,24 @@ const ChatForm = memo(function ChatForm({
 
   const isMoreThanThreeRows = visualRowCount > 3;
 
+  /** A one-line draft shares its row with the `+` and the controls. Once it needs a second line it
+   *  keeps the full-width row until it is cleared, since the wider field could fit it on one line
+   *  again and flip the layout back and forth at the wrap point. The row count includes the
+   *  field's padding, so wrapping is measured against the count of an empty field. */
+  const emptyRowCountRef = useRef<number | null>(null);
+  const [draftWrapped, setDraftWrapped] = useState(false);
+  useEffect(() => {
+    if (!textValue) {
+      emptyRowCountRef.current = visualRowCount;
+      setDraftWrapped(false);
+      return;
+    }
+    const emptyRowCount = emptyRowCountRef.current ?? 2;
+    if (visualRowCount > emptyRowCount || textValue.includes('\n')) {
+      setDraftWrapped(true);
+    }
+  }, [textValue, visualRowCount]);
+
   const composerItems = useComposerItems(conversationId, quotesEnabled);
   const attachTarget = useAttachTarget(conversation, disableInputs);
   const hasPromptsAccess = useHasAccess({
@@ -703,9 +725,11 @@ const ChatForm = memo(function ChatForm({
   const baseClasses = useMemo(
     () =>
       cn(
-        'md:py-3.5 m-0 w-full resize-none py-3.25 placeholder:text-text-tertiary bg-transparent [&:has(textarea:focus)]:shadow-[0_2px_6px_rgba(0,0,0,.05)]',
+        'md:py-3.5 m-0 w-full resize-none py-3.25 placeholder:text-text-placeholder bg-transparent [&:has(textarea:focus)]:shadow-[0_2px_6px_rgba(0,0,0,.05)]',
         isCollapsed ? 'max-h-[3.25rem]' : 'max-h-[45vh] md:max-h-[55vh]',
-        'px-5',
+        /* Folded, the field shares a centred row with the buttons, so it drops the inline
+           baseline gap under it that would push its line above theirs. */
+        'px-5 group-has-[[data-folded]]/composer:block group-has-[[data-folded]]/composer:px-1.5',
       ),
     [isCollapsed],
   );
@@ -843,6 +867,9 @@ const ChatForm = memo(function ChatForm({
               data-testid="composer-surface"
               onClick={handleContainerClick}
               className={cn(
+                /* One row while the bar is folded into it (`data-folded` on the bar): the `+`,
+                   the draft, then the controls. */
+                'group/composer has-[[data-folded]]:grid has-[[data-folded]]:grid-cols-[auto_minmax(0,1fr)_auto]',
                 /* The surface runs to the viewport floor below `sm`, where it is
                    squared off at the bottom (`rounded-t-theme-surface-lg`) and no disclaimer
                    follows it — so the action row is the last thing in it, with no
@@ -887,7 +914,12 @@ const ChatForm = memo(function ChatForm({
                 onSave={pastedTextEdit.saveEdit}
               />
               {endpoint && (
-                <div className={cn('flex', isRTL ? 'flex-row-reverse' : 'flex-row')}>
+                <div
+                  className={cn(
+                    'flex group-has-[[data-folded]]/composer:col-start-2 group-has-[[data-folded]]/composer:row-start-1',
+                    isRTL ? 'flex-row-reverse' : 'flex-row',
+                  )}
+                >
                   <div
                     className={cn(
                       'relative flex-1',
@@ -975,7 +1007,7 @@ const ChatForm = memo(function ChatForm({
                 </div>
               )}
               {(isPreparingFromUrl || urlSettingsError) && (
-                <p role="status" className="text-text-secondary px-5 pb-2 text-sm">
+                <p role="status" className="text-text-secondary col-span-full px-5 pb-2 text-sm">
                   {localize(urlSettingsError ? 'com_ui_url_settings_failed' : 'com_ui_sending')}
                 </p>
               )}
@@ -983,7 +1015,7 @@ const ChatForm = memo(function ChatForm({
                 <p
                   id={`code-workspace-hint-${index}`}
                   role="status"
-                  className="text-text-secondary px-5 pb-2 text-sm"
+                  className="text-text-secondary col-span-full px-5 pb-2 text-sm"
                 >
                   {localize('com_error_code_workspace_required')}
                 </p>
@@ -1024,6 +1056,14 @@ const ChatForm = memo(function ChatForm({
                   showSpeech={SpeechToText}
                   speechDisabled={speechDisabled}
                   dictation={dictation}
+                  fold={
+                    !draftWrapped && files.size === 0 && composerItems.length === 0 && !addedConvo
+                  }
+                  modelSlot={
+                    isSmallScreen ? undefined : (
+                      <ModelSelector startupConfig={startupConfig} variant="composer" />
+                    )
+                  }
                   approvalSlot={
                     <div className={cn('flex items-center gap-1.5', isRTL && 'flex-row-reverse')}>
                       <CodeApprovalMenu

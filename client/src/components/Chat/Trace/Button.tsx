@@ -13,11 +13,11 @@ export default function TraceButton({ onClick }: { onClick: () => void }) {
       render={
         <Button
           size="icon"
-          variant="outline"
+          variant="ghost"
           aria-label={label}
           onClick={onClick}
           data-testid="header-trace-button"
-          className="bg-presentation hover:bg-surface-tertiary size-9 shrink-0 rounded-xl"
+          className="size-9 shrink-0 rounded-xl"
         >
           <ChartNoAxesGantt className="icon-md" aria-hidden="true" />
         </Button>

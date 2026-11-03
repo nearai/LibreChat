@@ -24,14 +24,15 @@ import {
   useFileMapContext,
   ComposerRestoreProvider,
 } from '~/Providers';
+import { useGetMessagesByConvoId, useGetConvoIdQuery } from '~/data-provider';
 import { QueuedTurnPortalProvider } from './Steering/QueuedTurnPortal';
 import ApprovalProvider from './Messages/Content/ApprovalContext';
 import ConversationStarters from './Input/ConversationStarters';
 import { pendingApprovalActionFamily } from './approval/state';
 import ProjectBadge from '~/components/Projects/ProjectBadge';
+import useDrawerViewport from '~/hooks/Nav/useDrawerViewport';
 import { composerLiftFamily } from './Input/Composer/state';
 import { OwnerTextProvider } from './Messages/PrivateText';
-import { useGetMessagesByConvoId } from '~/data-provider';
 import Footer, { useConfiguredFooter } from './Footer';
 import { AskAnswerHostProvider } from './ask/state';
 import MessagesView from './Messages/MessagesView';
@@ -72,6 +73,9 @@ function ChatView({
   const autoSendText = useRecoilValue(store.autoSendText);
   const speechSettingsInitialized = useRecoilValue(store.speechSettingsInitialized);
   const centerFormOnLanding = useRecoilValue(store.centerFormOnLanding);
+  /** On desktop the header is a toolbar above the canvas card; on small screens it overlays the
+   *  top of the canvas, which runs to the screen's edge. */
+  const isSmallScreen = useDrawerViewport();
   const pendingAction = useAtomValue(
     pendingApprovalActionFamily(conversationId ?? Constants.NEW_CONVO),
   );
@@ -169,10 +173,19 @@ function ChatView({
 
   // Recoil conversation can lag the route during navigation; only announce a
   // title that belongs to the conversation currently in the URL.
+  /** Title generation and renames land in the conversation query cache, which the route keeps
+   *  for the open conversation; the in-memory conversation only learns the title on its next
+   *  load. Read without fetching, so this adds no request of its own. */
+  const { data: cachedConversation } = useGetConvoIdQuery(conversationId ?? '', {
+    enabled: false,
+  });
   const conversationTitle =
-    chatHelpers.conversation?.conversationId === conversationId
+    (cachedConversation?.conversationId === conversationId
+      ? cachedConversation?.title?.trim()
+      : undefined) ||
+    (chatHelpers.conversation?.conversationId === conversationId
       ? chatHelpers.conversation?.title?.trim()
-      : undefined;
+      : undefined);
   const pageHeading =
     isLandingPage || !conversationTitle ? localize('com_ui_new_chat') : conversationTitle;
   const parentConversationId = activeSubagentThread?.parentConversationId;
@@ -180,6 +193,18 @@ function ChatView({
    * Human continuation is a separate future fork/promotion flow, never an
    * in-place mutation of this canonical child transcript. */
   const isSubagentThreadReadOnly = activeSubagentThread != null;
+
+  /* Marks the header's controls as this pane's, so a pane-scoped shortcut pressed from them acts
+     here, not on the first pane. */
+  const header = (
+    <div data-chat-pane-portal={index} className="contents">
+      <Header
+        title={isLandingPage ? undefined : conversationTitle}
+        parentConversationId={parentConversationId}
+        readOnly={isSubagentThreadReadOnly}
+      />
+    </div>
+  );
 
   return (
     <AskAnswerHostProvider saveDrafts={saveDrafts}>
@@ -189,17 +214,13 @@ function ChatView({
             <ChatContext.Provider value={chatHelpers}>
               <AddedChatContext.Provider value={addedChatHelpers}>
                 <ApprovalProvider pendingAction={pendingAction}>
-                  <Presentation routePending={routePending}>
+                  <Presentation
+                    routePending={routePending}
+                    toolbar={isSmallScreen ? undefined : header}
+                  >
                     <TraceSurface conversationId={conversationId}>
                       <h1 className="sr-only">{pageHeading}</h1>
-                      {/* Marks the header's controls as this pane's, so a pane-scoped
-                        shortcut pressed from them acts here, not on the first pane. */}
-                      <div data-chat-pane-portal={index} className="contents">
-                        <Header
-                          parentConversationId={parentConversationId}
-                          readOnly={isSubagentThreadReadOnly}
-                        />
-                      </div>
+                      {isSmallScreen && header}
                       {!isLandingPage && chatProjectId && (
                         <ProjectBadge projectId={chatProjectId} />
                       )}

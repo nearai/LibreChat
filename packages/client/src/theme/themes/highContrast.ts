@@ -37,6 +37,7 @@ export const highContrastLightTheme: IThemeRGB = {
   'rgb-text-secondary-alt': '0 0 0', // #000000
   'rgb-text-tertiary': '0 0 0', // #000000
   'rgb-text-muted': '0 0 0', // #000000
+  'rgb-text-placeholder': '0 0 0', // matching text-tertiary
   'rgb-badge-label': '0 0 0', // #000000 (matching text-primary)
   'rgb-text-warning': '122 61 0', // #7a3d00
   'rgb-text-destructive': '161 0 0', // #a10000
@@ -131,6 +132,7 @@ export const highContrastLightTheme: IThemeRGB = {
   'rgb-alert-error-fill': '255 255 255', // matching status-error-subtle
   'rgb-alert-error-border': '161 0 0', // matching status-error-border
   'rgb-surface-canvas': '255 255 255', // matching surface-primary-alt
+  'rgb-surface-shell': '255 255 255', // matching surface-primary-alt
   'rgb-surface-user-message': '255 255 255', // matching surface-tertiary
   'rgb-surface-card': '255 255 255', // matching surface-secondary
   'rgb-surface-card-hover': '255 255 255', // matching surface-tertiary
@@ -241,6 +243,7 @@ export const highContrastDarkTheme: IThemeRGB = {
   'rgb-text-secondary-alt': '255 255 255', // #ffffff
   'rgb-text-tertiary': '255 255 255', // #ffffff
   'rgb-text-muted': '255 255 255', // #ffffff
+  'rgb-text-placeholder': '255 255 255', // matching text-tertiary
   'rgb-badge-label': '255 255 255', // #ffffff (matching text-primary)
   'rgb-text-warning': '255 201 77', // #ffc94d
   'rgb-text-destructive': '255 143 143', // #ff8f8f
@@ -331,6 +334,7 @@ export const highContrastDarkTheme: IThemeRGB = {
   'rgb-alert-error-fill': '0 0 0', // matching status-error-subtle
   'rgb-alert-error-border': '255 143 143', // matching status-error-border
   'rgb-surface-canvas': '0 0 0', // matching surface-primary-alt
+  'rgb-surface-shell': '0 0 0', // matching surface-primary-alt
   'rgb-surface-user-message': '0 0 0', // matching surface-tertiary
   'rgb-surface-card': '0 0 0', // matching surface-secondary
   'rgb-surface-card-hover': '0 0 0', // matching surface-tertiary

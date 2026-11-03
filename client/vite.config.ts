@@ -154,8 +154,8 @@ export default defineConfig(({ command }) => ({
         name: 'Private AI',
         short_name: 'Private AI',
         display: 'standalone',
-        background_color: '#000000',
-        theme_color: '#0091FD',
+        background_color: '#070a1a',
+        theme_color: '#070a1a',
         icons: [
           {
             src: 'assets/favicon-32x32.png',

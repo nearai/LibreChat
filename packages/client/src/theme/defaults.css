@@ -97,6 +97,7 @@ html {
   --text-secondary-alt: var(--gray-500);
   --text-tertiary: var(--gray-500);
   --text-muted: 105 110 121; /* Click UI global.color.text.muted #696e79 */
+  --text-placeholder: var(--text-tertiary);
   --badge-label: var(--text-primary);
   --shimmer-dip: 129 130 134;
   --shimmer-dip-alpha: 0.18;
@@ -167,6 +168,7 @@ html {
   --alert-error-fill: var(--status-error-subtle);
   --alert-error-border: var(--status-error-border);
   --surface-canvas: var(--surface-primary-alt);
+  --surface-shell: var(--surface-primary-alt);
   --surface-user-message: var(--surface-tertiary);
   --surface-card: var(--surface-secondary);
   --surface-card-hover: var(--surface-tertiary);
@@ -377,6 +379,7 @@ html {
   --text-secondary-alt: var(--gray-400);
   --text-tertiary: var(--gray-400);
   --text-muted: 179 182 189; /* Click UI global.color.text.muted #b3b6bd */
+  --text-placeholder: var(--text-tertiary);
   --badge-label: var(--text-primary);
   --shimmer-base: 255 255 255;
   --shimmer-base-alpha: 0.8;
@@ -443,6 +446,7 @@ html {
   --alert-error-fill: var(--status-error-subtle);
   --alert-error-border: var(--status-error-border);
   --surface-canvas: var(--surface-primary-alt);
+  --surface-shell: var(--surface-primary-alt);
   --surface-user-message: var(--surface-tertiary);
   --surface-card: var(--surface-secondary);
   --surface-card-hover: var(--surface-tertiary);
@@ -533,6 +537,7 @@ html {
   --prose-bullet: var(--border-medium);
   --prose-quote-bar: var(--border-medium);
   --surface-canvas: var(--surface-primary-alt);
+  --surface-shell: var(--surface-primary-alt);
   --surface-user-message: var(--surface-tertiary);
   --surface-card: var(--surface-secondary);
   --surface-card-hover: var(--surface-tertiary);
@@ -549,6 +554,7 @@ html {
 [data-theme-scope].dark {
   --avatar-placeholder: var(--surface-tertiary);
   --surface-canvas: var(--surface-primary-alt);
+  --surface-shell: var(--surface-primary-alt);
   --surface-user-message: var(--surface-tertiary);
   --surface-card: var(--surface-secondary);
   --surface-card-hover: var(--surface-tertiary);

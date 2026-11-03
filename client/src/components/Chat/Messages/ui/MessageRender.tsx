@@ -183,6 +183,7 @@ const MessageRender = memo(function MessageRender({
       hasParallelContent={hasParallelContent}
       fullWidth={maximizeChatSpace}
       isEditing={edit}
+      working={isSubmitting && isLatestMessage && msg.isCreatedByUser !== true}
       systemLabel={
         wakeupDisplay != null && subagentWakeup == null && !edit
           ? localize('com_ui_system_event')

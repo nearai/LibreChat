@@ -18,8 +18,10 @@ jest.mock('~/hooks/AuthContext', () => ({
   useAuthContext: () => ({ isAuthenticated: false, user: null, roles: {} }),
 }));
 
+const mockCachedConversation = jest.fn();
 jest.mock('~/data-provider', () => ({
   useGetMessagesByConvoId: () => ({ data: null, isLoading: false, isFetching: false }),
+  useGetConvoIdQuery: () => ({ data: mockCachedConversation() }),
   useProjectQuery: () => ({ data: undefined }),
 }));
 
@@ -41,7 +43,12 @@ jest.mock('~/hooks', () => ({
 
 jest.mock('../Presentation', () => ({
   __esModule: true,
-  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  default: ({ children, toolbar }: { children: React.ReactNode; toolbar?: React.ReactNode }) => (
+    <div>
+      {toolbar}
+      {children}
+    </div>
+  ),
 }));
 jest.mock('../Header', () => ({ __esModule: true, default: () => <div /> }));
 jest.mock('../Footer', () => ({
@@ -64,6 +71,7 @@ describe('ChatView page heading', () => {
   beforeEach(() => {
     mockParams.mockReturnValue({});
     mockConversation.mockReturnValue(null);
+    mockCachedConversation.mockReturnValue(undefined);
   });
 
   test('exposes a single h1 to assistive technology', () => {
@@ -188,5 +196,30 @@ describe('ChatView composer column', () => {
 
     expect(composerColumn).toHaveClass('[view-transition-name:chat-form]');
     expect(composerColumn).toHaveClass('relative', 'z-10');
+  });
+
+  /** A generated title lands in the conversation query cache, not the in-memory conversation,
+   *  which still says "New Chat" until the conversation is loaded again. */
+  test('takes a generated title from the conversation cache over the in-memory one', () => {
+    mockParams.mockReturnValue({ conversationId: 'convo-1' });
+    mockConversation.mockReturnValue({ conversationId: 'convo-1', title: 'New Chat' });
+    mockCachedConversation.mockReturnValue({
+      conversationId: 'convo-1',
+      title: 'Deploy checklist',
+    });
+
+    render(<ChatView />);
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Deploy checklist' })).toBeInTheDocument();
+  });
+
+  test('ignores a cached conversation that is not the one in the route', () => {
+    mockParams.mockReturnValue({ conversationId: 'convo-2' });
+    mockConversation.mockReturnValue({ conversationId: 'convo-2', title: 'Release notes' });
+    mockCachedConversation.mockReturnValue({ conversationId: 'convo-1', title: 'Previous chat' });
+
+    render(<ChatView />);
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Release notes' })).toBeInTheDocument();
   });
 });

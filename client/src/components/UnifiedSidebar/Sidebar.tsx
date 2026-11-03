@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import type { NavLink } from '~/common';
 import SidePanelNav from '~/components/SidePanel/Nav';
+import Masthead, { NewChatRow } from './Masthead';
 import ExpandedPanel from './ExpandedPanel';
 import { cn } from '~/utils';
 
@@ -38,21 +39,28 @@ function Sidebar({
           onCollapse={onCollapse}
           onExpand={onExpand}
           onLeaveInsights={onLeaveInsights}
-          switchToHistory={switchToHistory}
         />
         <nav
           className={cn(
-            /** The resize separator to the right is transparent until hovered, so
-             *  the edge is drawn here. The panel and the content beside it now sit
-             *  on the same surface, so the fill no longer separates them on its
-             *  own and the boundary has to be a line in every theme. */
-            'border-border-light bg-surface-primary-alt min-h-0 flex-1 overflow-hidden border-r',
+            'my-2 flex min-h-0 flex-1 flex-col overflow-hidden',
             expanded ? 'opacity-100' : 'pointer-events-none opacity-0',
           )}
           style={{ transition: expanded ? 'opacity 200ms ease 80ms' : 'opacity 150ms ease' }}
           aria-hidden={!expanded}
         >
-          <SidePanelNav links={links} />
+          {/* The brand row sits in the toolbar band on the shell, level with the chat's
+              header; the panel card starts below it. */}
+          <Masthead />
+          {/* The leading half of the card that floats on the shell: it rounds the leading
+              corners and the chat canvas beside it rounds the trailing ones. The resize
+              separator to the right is transparent until hovered, and both halves share one
+              surface, so the boundary between them is a line in every theme. */}
+          <div className="border-border-light bg-surface-primary-alt rounded-l-theme-surface-lg flex min-h-0 flex-1 flex-col overflow-hidden border-r">
+            <NewChatRow switchToHistory={switchToHistory} />
+            <div className="min-h-0 flex-1">
+              <SidePanelNav links={links} />
+            </div>
+          </div>
         </nav>
       </div>
       <div
@@ -64,7 +72,7 @@ function Sidebar({
         aria-valuemax={Math.round(maxWidth)}
         tabIndex={expanded ? 0 : -1}
         className={cn(
-          'hover:bg-border-medium active:bg-border-heavy absolute top-0 right-0 z-10 h-full w-1 cursor-col-resize transition-colors',
+          'hover:bg-border-medium active:bg-border-heavy absolute top-14 right-0 bottom-2 z-10 w-1 cursor-col-resize transition-colors',
           expanded ? 'opacity-100' : 'pointer-events-none opacity-0',
         )}
         style={{ transition: expanded ? 'opacity 200ms ease 80ms' : 'opacity 150ms ease' }}

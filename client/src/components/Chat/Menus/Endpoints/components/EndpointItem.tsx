@@ -88,7 +88,8 @@ const SettingsButton = ({
  * such as MutationObservers in EndpointModelItem) only runs when the submenu
  * is actually mounted — which Ariakit defers via `unmountOnHide`.
  */
-function EndpointMenuContent({
+/** One endpoint's rows: its grouped specs, the marketplace entry and its models. */
+export function EndpointMenuContent({
   endpoint,
   endpointIndex,
 }: {

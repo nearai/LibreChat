@@ -15,10 +15,24 @@ describe('QueryDevtoolsGate', () => {
     expect(screen.queryByTestId('query-devtools')).not.toBeInTheDocument();
   });
 
-  it('enables query devtools in local development', async () => {
-    render(<QueryDevtoolsGate isDevelopment={true} config={undefined} />);
+  it('keeps query devtools out of local development unless the developer opts in', () => {
+    const { container } = render(
+      <QueryDevtoolsGate isDevelopment={true} devOptIn={false} config={undefined} />,
+    );
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('enables query devtools in local development when the developer opts in', async () => {
+    render(<QueryDevtoolsGate isDevelopment={true} devOptIn={true} config={undefined} />);
 
     await waitFor(() => expect(screen.getByTestId('query-devtools')).toBeInTheDocument());
+  });
+
+  it('ignores the development opt-in in a production build', () => {
+    expect(
+      shouldEnableQueryDevtools({ isDevelopment: false, devOptIn: true, config: undefined }),
+    ).toBe(false);
   });
 
   it('enables query devtools in production when the server-injected flag is true', async () => {

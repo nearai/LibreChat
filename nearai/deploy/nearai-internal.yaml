@@ -6,151 +6,266 @@ version: 1.3.17
 cache: true
 
 interface:
-  # NEAR AI brand (near.ai/brand): Blue #0091FD primary, Black, Off-White #EEEEEB,
-  # Dark Grey #272727, Grey #A7A7A7, Sky #83DCFF; Schibsted Grotesk / Mona Sans / JetBrains Mono.
-  # Large fills (send button, rings, icons) use Blue #0091FD with black on top (6.5:1); text, links
-  # and white-label buttons use a darker brand blue #0066B3 (light) or Sky (dark) to keep WCAG AA.
+  # Near AI OS Design System (github.com/rdisandro/near-ai-os-design-system), parent `light` and
+  # `dark` themes. The web has no desktop behind its glass, so every surface takes the system's
+  # opaque fallback: `scene` frames the app, `pane-opaque` is the pane the sidebar and chat share,
+  # `card-on-opaque` paints cards, the composer and your bubbles. Alpha roles (hairline, rule,
+  # row-hover, the tints) are pre-blended onto the pane, since theme colors are opaque triplets.
+  # Accent is NEAR AI blue (NDS-1): one accent for the one action (Send, primary buttons) and the
+  # current selection. Faces are the platform's own (NDS-4): no bundled brand face on the web.
   theme:
     version: 1
     name: nearai
     modes:
       light:
         colors:
-          rgb-text-primary: '22 23 27'              # #16171B labels, headings (near.ai text)
-          rgb-text-secondary: '51 51 51'            # #333333 message body text (LibreChat prose reads text-secondary)
-          rgb-text-secondary-alt: '82 82 82'        # #525252 secondary UI text
-          rgb-text-tertiary: '105 105 105'          # #696969 meta: >=4.5:1 on white and Off-White
-          rgb-text-muted: '82 82 82'                # #525252
-          rgb-dialog-title: '22 23 27'              # #16171B
-          rgb-link: '0 102 179'                     # #0066B3 brand blue, darkened: >=4.7:1 on every light surface
-          rgb-link-hover: '0 85 143'                # #00558F
-          rgb-link-prose: '0 102 179'               # #0066B3
-          rgb-accent-primary: '0 102 179'           # #0066B3 accent used as text (e.g. Sign up)
-          rgb-accent-primary-hover: '0 85 143'      # #00558F
-          rgb-ring-primary: '0 145 253'             # #0091FD
-          rgb-status-verified: '0 145 253'          # #0091FD
-          rgb-status-info: '0 102 179'              # #0066B3
-          rgb-status-info-subtle: '224 243 255'     # #E0F3FF Sky tint
-          rgb-status-info-border: '131 220 255'     # #83DCFF brand Sky
-          rgb-surface-submit: '0 102 179'           # #0066B3 text buttons: white label 5.9:1
-          rgb-surface-submit-hover: '0 85 143'      # #00558F
-          rgb-surface-inverted: '0 145 253'         # #0091FD send button, primary actions
-          rgb-surface-inverted-hover: '0 114 201'   # #0072C9
-          rgb-surface-inverted-pressed: '0 114 201' # #0072C9
-          rgb-button-primary: '0 145 253'           # #0091FD
-          rgb-button-primary-hover: '0 114 201'     # #0072C9
-          rgb-text-inverted: '0 0 0'                # #000000 black on brand Blue
-          rgb-surface-primary: '253 253 253'        # #FDFDFD greyscale lightest
-          rgb-surface-chat: '253 253 253'           # #FDFDFD
-          rgb-surface-composer: '255 255 255'       # #FFFFFF
-          rgb-header-primary: '253 253 253'         # #FDFDFD
-          rgb-surface-dialog: '253 253 253'         # #FDFDFD
-          rgb-surface-popover: '253 253 253'        # #FDFDFD
-          rgb-surface-menu: '253 253 253'           # #FDFDFD
-          rgb-surface-canvas: '253 253 253'         # #FDFDFD chat area, same as the sign-in page
-          rgb-surface-primary-alt: '238 238 235'    # #EEEEEB
-          rgb-surface-secondary: '238 238 235'      # #EEEEEB
-          rgb-surface-card: '238 238 235'           # #EEEEEB
-          rgb-surface-search: '238 238 235'         # #EEEEEB
-          rgb-surface-code: '238 238 235'           # #EEEEEB
-          rgb-header-hover: '238 238 235'           # #EEEEEB
-          rgb-surface-tertiary: '230 230 230'       # #E6E6E6 greyscale
-          rgb-surface-user-message: '238 238 235'   # #EEEEEB your bubbles: brand Off-White, neutral
-          rgb-surface-active: '230 230 230'         # #E6E6E6
-          rgb-surface-hover: '230 230 230'          # #E6E6E6
-          rgb-surface-nav-hover: '231 231 228'      # #E7E7E4 sidebar hover
-          rgb-surface-card-hover: '230 230 230'     # #E6E6E6
-          rgb-surface-tab-selected: '230 230 230'   # #E6E6E6
-          rgb-surface-code-inline: '230 230 230'    # #E6E6E6
-          rgb-header-button-hover: '230 230 230'    # #E6E6E6
-          rgb-surface-active-alt: '213 213 213'     # #D5D5D5 greyscale
-          rgb-surface-hover-alt: '213 213 213'      # #D5D5D5
-          rgb-surface-nav-selected: '223 223 219'   # #DFDFDB selected chat: lighter than #D5D5D5
-          rgb-border-light: '230 230 230'           # #E6E6E6
-          rgb-border-control: '213 213 213'         # #D5D5D5
-          rgb-border-menu: '230 230 230'            # #E6E6E6
-          rgb-chart-widget-stroke: '230 230 230'    # #E6E6E6
-          rgb-border-medium: '213 213 213'          # #D5D5D5
-          rgb-border-medium-alt: '213 213 213'      # #D5D5D5
-          rgb-border-heavy: '180 180 180'           # #B4B4B4
-          rgb-border-xheavy: '133 133 133'          # #858585
-        appearance:
-          fontFamily: "'Mona Sans', system-ui, sans-serif"                  # brand body
-          displayFontFamily: "'Schibsted Grotesk', 'Mona Sans', system-ui, sans-serif"  # brand display
-          dialogTitleFontFamily: "'Schibsted Grotesk', 'Mona Sans', system-ui, sans-serif"
-          monoFontFamily: "'JetBrains Mono', ui-monospace, monospace"       # brand utility
-          controlFontWeight: '600'                                           # brand: semibold buttons
-          dialogTitleFontWeight: '600'
+          # Grounds
+          rgb-surface-shell: '230 234 241'          # scene #E6EAF1: behind the rail and the pane
+          rgb-surface-canvas: '242 243 246'         # pane-opaque #F2F3F6: the chat pane
+          rgb-surface-primary: '242 243 246'        # pane-opaque
+          rgb-surface-chat: '242 243 246'           # pane-opaque
+          rgb-header-primary: '242 243 246'         # pane-opaque
+          rgb-surface-primary-alt: '242 243 246'    # pane-opaque: the sidebar shares the pane
+          rgb-surface-dialog: '244 245 248'         # pane-base #F4F5F8: modals over scrim-modal
+          # Painted content
+          rgb-surface-composer: '255 255 255'       # card-on-opaque #FFFFFF
+          rgb-surface-user-message: '255 255 255'   # card-on-opaque: your turn is a card bubble
+          rgb-surface-card: '255 255 255'           # card-on-opaque
+          rgb-surface-card-hover: '247 248 251'     # card-hover #F7F8FB
+          rgb-surface-popover: '255 255 255'        # card-on-opaque, lifted by shadow-float
+          rgb-surface-menu: '255 255 255'           # card-on-opaque
+          rgb-surface-secondary: '248 249 251'      # card-quiet-on-opaque #F8F9FB
+          rgb-surface-secondary-alt: '248 249 251'  # card-quiet-on-opaque
+          rgb-surface-search: '232 233 236'         # row-hover over the pane: the search well
+          rgb-surface-code: '255 255 255'           # card-on-opaque
+          rgb-surface-code-inline: '232 233 236'    # neutral-tint #0000000F over the pane
+          rgb-field-fill: '255 255 255'             # card-on-opaque
+          # States: hover replaces the fill, selection is the accent tint
+          rgb-surface-hover: '236 237 241'          # hover: a step under the pane that still shows on cards
+          rgb-surface-active: '236 237 241'         # hover
+          rgb-surface-tertiary: '236 237 241'       # hover
+          rgb-header-hover: '230 232 237'           # row-hover, strengthened to read on the pane
+          rgb-surface-nav-hover: '230 232 237'      # row-hover
+          rgb-surface-active-alt: '220 223 230'     # selected or pressed: a second step past hover
+          rgb-surface-pressed: '220 223 230'        # selected or pressed
+          rgb-surface-hover-alt: '220 223 230'      # selected or pressed
+          rgb-header-button-hover: '220 223 230'    # selected or pressed
+          rgb-surface-tab-selected: '220 223 230'   # selected
+          rgb-surface-nav-selected: '194 217 236'   # accent-tint at 20% over the pane: the current chat
+          rgb-switch-unchecked: '203 204 207'       # toggle-off #00000029 over the pane
+          # Lines
+          rgb-border-light: '223 224 226'           # hairline #00000014 over the pane
+          rgb-border-menu: '223 224 226'            # hairline
+          rgb-chart-widget-stroke: '223 224 226'    # chart-grid
+          rgb-border-medium: '213 214 216'          # rule #0000001F over the pane
+          rgb-border-medium-alt: '213 214 216'      # rule
+          rgb-border-control: '138 138 144'         # neutral #8A8A90: a field edge holds 3:1
+          rgb-border-heavy: '125 125 128'           # edge-hc #1D1D1F8C over the pane
+          rgb-border-xheavy: '138 138 144'          # neutral
+          # Text
+          rgb-text-primary: '29 29 31'              # text-primary #1D1D1F
+          rgb-dialog-title: '29 29 31'              # text-primary
+          rgb-text-secondary: '60 60 67'            # text-secondary #3C3C43 (message prose)
+          rgb-text-secondary-alt: '61 61 67'        # text-tertiary #3D3D43
+          rgb-text-tertiary: '61 61 67'             # text-tertiary
+          rgb-text-muted: '61 61 67'                # text-tertiary
+          rgb-text-placeholder: '115 115 121'      # text-placeholder: a quiet grey, 4.7:1 on the composer
+          rgb-link: '2 65 117'                      # accent-text #024175
+          rgb-link-prose: '2 65 117'                # accent-text
+          rgb-link-hover: '3 92 163'                # accent #035CA3
+          rgb-accent-primary: '2 65 117'            # accent-text
+          rgb-accent-primary-hover: '3 92 163'      # accent
+          rgb-ring-primary: '3 92 163'              # focus-ring #035CA3
+          rgb-focus-outline: '3 92 163'             # focus-ring
+          rgb-focus-control: '3 92 163'             # focus-ring
+          # Accent: the one action and its label
+          rgb-surface-inverted: '3 92 163'          # accent #035CA3: Send
+          rgb-surface-inverted-hover: '0 72 143'    # accent-pressed #00488F
+          rgb-surface-inverted-pressed: '0 72 143'  # accent-pressed
+          rgb-text-inverted: '255 255 255'          # text-on-accent #FFFFFF
+          rgb-surface-submit: '3 92 163'            # accent: primary buttons
+          rgb-surface-submit-hover: '0 72 143'      # accent-pressed
+          rgb-button-primary: '3 92 163'            # accent
+          rgb-button-primary-hover: '0 72 143'      # accent-pressed
+          rgb-text-on-status: '255 255 255'         # text-on-accent: labels on accent and critical
+          # Status: a dot plus words
+          rgb-status-verified: '0 112 198'          # accent-soft #0070C6
+          rgb-status-info: '2 65 117'               # accent-text
+          rgb-status-info-subtle: '208 225 239'     # accent-tint
+          rgb-status-info-border: '0 112 198'       # accent-soft
+          rgb-status-info-strong: '2 65 117'        # accent-text
+          rgb-status-success: '26 143 76'           # positive #1A8F4C
+          rgb-status-success-subtle: '212 229 222'  # positive-tint over the pane
+          rgb-status-success-border: '26 143 76'    # positive
+          rgb-status-success-strong: '11 70 40'     # positive-text #0B4628
+          rgb-status-warning: '168 105 15'          # caution #A8690F
+          rgb-status-warning-subtle: '232 224 214'  # caution-tint over the pane
+          rgb-status-warning-border: '168 105 15'   # caution
+          rgb-status-warning-strong: '87 52 3'      # caution-text #573403
+          rgb-text-warning: '87 52 3'               # caution-text
+          rgb-status-error: '208 52 44'             # critical #D0342C
+          rgb-status-error-subtle: '238 220 222'    # critical-tint over the pane
+          rgb-status-error-border: '208 52 44'      # critical
+          rgb-status-error-strong: '119 24 20'      # critical-text #771814
+          rgb-text-destructive: '121 19 19'         # destructive-text #791313
+          rgb-surface-destructive: '208 52 44'      # critical
+          rgb-surface-destructive-hover: '176 44 37'  # critical, pressed 8% darker
+          rgb-border-destructive: '208 52 44'       # critical
+          rgb-status-neutral: '138 138 144'         # neutral #8A8A90
+          rgb-status-neutral-subtle: '232 233 236'  # neutral-tint over the pane
+          rgb-status-neutral-border: '213 214 216'  # rule
+          # Data: data-1 to data-8, in order
+          rgb-series-1: '42 120 214'                # #2A78D6
+          rgb-series-2: '207 83 32'                 # #CF5320
+          rgb-series-3: '20 144 106'                # #14906A
+          rgb-series-4: '169 114 0'                 # #A97200
+          rgb-series-5: '201 74 124'                # #C94A7C
+          rgb-series-6: '47 138 31'                 # #2F8A1F
+          rgb-series-7: '90 72 184'                 # #5A48B8
+          rgb-series-8: '211 60 60'                 # #D33C3C
+        appearance: &nearaiAppearance
+          # Type: the web tier on system faces (`--font-web`, `--font-mono`)
+          fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Noto Sans', Ubuntu, Cantarell, sans-serif"
+          displayFontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Noto Sans', Ubuntu, Cantarell, sans-serif"
+          dialogTitleFontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Noto Sans', Ubuntu, Cantarell, sans-serif"
+          monoFontFamily: "ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, 'Liberation Mono', monospace"
+          controlFontWeight: '500'                  # label step: medium
+          dialogTitleFontWeight: '600'              # title step: semibold
+          # Shape: capsule controls, concentric corners
+          controlRadius: '0.6875rem'                # radius-control 11
+          roundControlRadius: '9999px'              # radius-pill: buttons, chips, segments
+          surfaceRadius: '1rem'                     # radius-card 16
+          largeSurfaceRadius: '1.25rem'             # radius-pane 20
+          menuRadius: '0.875rem'                    # radius-card-quiet 14: menus
+          menuPanelRadius: '0.875rem'               # radius-card-quiet 14
+          popoverRadius: '1rem'                     # radius-card 16: popovers
+          # Motion: one curve for fades and fills
+          motionFast: '150ms'                       # duration-fast
+          motionNormal: '220ms'                     # duration-standard
+          menuShadow: '0 14px 30px rgb(0 0 0 / 0.12)'      # shadow-float
+          tooltipShadow: '0 14px 30px rgb(0 0 0 / 0.12)'   # shadow-float
       dark:
         colors:
-          rgb-text-primary: '253 253 253'           # #FDFDFD
-          rgb-text-secondary: '213 213 213'         # #D5D5D5 message body text (greyscale)
-          rgb-text-secondary-alt: '167 167 167'     # #A7A7A7 secondary UI text (brand Grey)
-          rgb-text-tertiary: '133 133 133'          # #858585
-          rgb-text-muted: '167 167 167'             # #A7A7A7
-          rgb-dialog-title: '253 253 253'           # #FDFDFD
-          rgb-link: '131 220 255'                   # #83DCFF brand Sky (13.6:1 on black)
-          rgb-link-hover: '0 145 253'               # #0091FD
-          rgb-link-prose: '131 220 255'             # #83DCFF
-          rgb-accent-primary: '0 145 253'           # #0091FD brand Blue
-          rgb-accent-primary-hover: '131 220 255'   # #83DCFF
-          rgb-ring-primary: '0 145 253'             # #0091FD
-          rgb-status-verified: '0 145 253'          # #0091FD
-          rgb-status-info: '131 220 255'            # #83DCFF
-          rgb-status-info-subtle: '7 49 79'         # #07314F
-          rgb-status-info-border: '35 133 199'      # #2385C7 brand Deep Blue
-          rgb-surface-submit: '0 102 179'           # #0066B3 text buttons: white label 5.9:1
-          rgb-surface-submit-hover: '0 85 143'      # #00558F
-          rgb-surface-inverted: '0 145 253'         # #0091FD
-          rgb-surface-inverted-hover: '35 133 199'  # #2385C7
-          rgb-surface-inverted-pressed: '35 133 199'# #2385C7
-          rgb-button-primary: '0 145 253'           # #0091FD
-          rgb-button-primary-hover: '35 133 199'    # #2385C7
-          rgb-text-inverted: '0 0 0'                # #000000 black on brand Blue
-          rgb-surface-primary: '5 5 5'              # #050505
-          rgb-surface-chat: '5 5 5'                 # #050505
-          rgb-header-primary: '5 5 5'               # #050505
-          rgb-surface-canvas: '5 5 5'               # #050505 page / chat area (near.ai --cl-bg)
-          rgb-surface-primary-alt: '12 12 12'       # #0C0C0C sidebar (--cl-bg2)
-          rgb-surface-secondary: '17 17 17'         # #111111
-          rgb-surface-card: '17 17 17'              # #111111
-          rgb-surface-search: '17 17 17'            # #111111
-          rgb-surface-code: '17 17 17'              # #111111
-          rgb-surface-dialog: '17 17 17'            # #111111
-          rgb-surface-popover: '17 17 17'           # #111111
-          rgb-surface-menu: '17 17 17'              # #111111
-          rgb-surface-composer: '17 17 17'          # #111111 composer, cards, menus (--cl-surface)
-          rgb-surface-tertiary: '25 25 25'          # #191919 hover, user message (--cl-surface2)
-          rgb-surface-user-message: '31 31 31'      # #1F1F1F your bubbles: neutral, a step above the page
-          rgb-surface-active: '25 25 25'            # #191919
-          rgb-surface-hover: '25 25 25'             # #191919
-          rgb-surface-nav-hover: '25 25 25'         # #191919
-          rgb-surface-card-hover: '25 25 25'        # #191919
-          rgb-header-hover: '25 25 25'              # #191919
-          rgb-surface-active-alt: '39 39 39'        # #272727 selected (brand Dark Grey)
-          rgb-surface-hover-alt: '39 39 39'         # #272727
-          rgb-surface-nav-selected: '39 39 39'      # #272727
-          rgb-surface-tab-selected: '39 39 39'      # #272727
-          rgb-header-button-hover: '39 39 39'       # #272727
-          rgb-surface-code-inline: '39 39 39'       # #272727
-          rgb-border-light: '31 31 31'              # #1F1F1F hairline (~8% white)
-          rgb-border-control: '46 46 46'            # #2E2E2E field edge (~14% white)
-          rgb-border-menu: '31 31 31'               # #1F1F1F
-          rgb-chart-widget-stroke: '31 31 31'       # #1F1F1F
-          rgb-border-medium: '46 46 46'             # #2E2E2E
-          rgb-border-medium-alt: '46 46 46'         # #2E2E2E
-          rgb-border-heavy: '82 82 82'              # #525252
-          rgb-border-xheavy: '133 133 133'          # #858585
-          rgb-drawer-edge: '12 12 12'               # #0C0C0C
-          rgb-field-fill: '17 17 17'                # #111111
+          # Grounds
+          rgb-surface-shell: '7 10 26'              # scene #070A1A: behind the rail and the pane
+          rgb-surface-canvas: '13 17 36'            # pane-opaque #0D1124: the chat pane
+          rgb-surface-primary: '13 17 36'           # pane-opaque
+          rgb-surface-chat: '13 17 36'              # pane-opaque
+          rgb-header-primary: '13 17 36'            # pane-opaque
+          rgb-surface-primary-alt: '13 17 36'       # pane-opaque: the sidebar shares the pane
+          rgb-surface-dialog: '13 17 36'            # pane-base #0D1124: modals over scrim-modal
+          # Painted content
+          rgb-surface-composer: '23 28 51'          # card-on-opaque #171C33
+          rgb-surface-user-message: '23 28 51'      # card-on-opaque: your turn is a card bubble
+          rgb-surface-card: '23 28 51'              # card-on-opaque
+          rgb-surface-card-hover: '32 36 54'        # card-hover #FFFFFF14 over the pane
+          rgb-surface-popover: '23 28 51'           # card-on-opaque, lifted by shadow-float
+          rgb-surface-menu: '23 28 51'              # card-on-opaque
+          rgb-surface-secondary: '19 24 45'         # card-quiet-on-opaque #13182D
+          rgb-surface-secondary-alt: '19 24 45'     # card-quiet-on-opaque
+          rgb-surface-search: '23 28 51'            # card-on-opaque: the search well
+          rgb-surface-code: '23 28 51'              # card-on-opaque
+          rgb-surface-code-inline: '37 41 58'       # neutral-tint #FFFFFF1A over the pane
+          rgb-field-fill: '23 28 51'                # card-on-opaque
+          # States: hover replaces the fill, selection is the accent tint
+          rgb-surface-hover: '40 46 72'             # hover: lifts off both the pane and the cards
+          rgb-surface-active: '40 46 72'            # hover
+          rgb-surface-tertiary: '40 46 72'          # hover
+          rgb-header-hover: '28 33 54'              # row-hover, strengthened to read on the pane
+          rgb-surface-nav-hover: '28 33 54'         # row-hover
+          rgb-surface-active-alt: '55 62 92'        # selected or pressed: a second step past hover
+          rgb-surface-pressed: '55 62 92'           # selected or pressed
+          rgb-surface-hover-alt: '55 62 92'         # selected or pressed
+          rgb-header-button-hover: '55 62 92'       # selected or pressed
+          rgb-surface-tab-selected: '55 62 92'      # selected
+          rgb-surface-nav-selected: '9 55 101'      # accent-tint at 30% over the pane: the current chat
+          rgb-switch-unchecked: '56 60 75'          # toggle-off #FFFFFF2E over the pane
+          # Lines
+          rgb-border-light: '32 36 54'              # hairline #FFFFFF14 over the pane
+          rgb-border-menu: '32 36 54'               # hairline
+          rgb-chart-widget-stroke: '32 36 54'       # chart-grid
+          rgb-border-medium: '42 46 62'             # rule #FFFFFF1F over the pane
+          rgb-border-medium-alt: '42 46 62'         # rule
+          rgb-border-control: '98 103 122'          # a field edge that holds 3:1 on the pane
+          rgb-border-heavy: '82 87 107'
+          rgb-border-xheavy: '169 169 176'          # neutral #A9A9B0
+          rgb-drawer-edge: '42 46 62'               # rule: the drawer's edge over the scrim
+          # Text
+          rgb-text-primary: '242 243 248'           # text-primary #F2F3F8
+          rgb-dialog-title: '242 243 248'           # text-primary
+          rgb-text-secondary: '214 215 222'         # text-secondary #F2F3F8E0 over the pane
+          rgb-text-secondary-alt: '205 207 214'     # text-tertiary #F2F3F8D6 over the pane
+          rgb-text-tertiary: '205 207 214'          # text-tertiary
+          rgb-text-muted: '205 207 214'             # text-tertiary
+          rgb-text-placeholder: '136 139 154'      # text-placeholder: a quiet grey, 4.9:1 on the composer
+          rgb-link: '198 225 255'                   # accent-text #C6E1FF
+          rgb-link-prose: '198 225 255'             # accent-text
+          rgb-link-hover: '126 188 255'             # accent #7EBCFF
+          rgb-accent-primary: '198 225 255'         # accent-text
+          rgb-accent-primary-hover: '126 188 255'   # accent
+          rgb-ring-primary: '126 188 255'           # focus-ring #7EBCFF
+          rgb-focus-outline: '126 188 255'          # focus-ring
+          rgb-focus-control: '126 188 255'          # focus-ring
+          # Accent: the one action and its label
+          rgb-surface-inverted: '126 188 255'       # accent #7EBCFF: Send
+          rgb-surface-inverted-hover: '106 168 235' # accent-pressed #6AA8EB
+          rgb-surface-inverted-pressed: '106 168 235'  # accent-pressed
+          rgb-text-inverted: '7 26 46'              # text-on-accent #071A2E
+          rgb-surface-submit: '126 188 255'         # accent: primary buttons
+          rgb-surface-submit-hover: '106 168 235'   # accent-pressed
+          rgb-button-primary: '126 188 255'         # accent
+          rgb-button-primary-hover: '106 168 235'   # accent-pressed
+          rgb-text-on-status: '7 26 46'             # text-on-accent: labels on accent and critical
+          # Status: a dot plus words
+          rgb-status-verified: '0 145 253'          # accent-soft #0091FD (brand blue)
+          rgb-status-info: '198 225 255'            # accent-text
+          rgb-status-info-subtle: '10 45 84'        # accent-tint
+          rgb-status-info-border: '0 145 253'       # accent-soft
+          rgb-status-info-strong: '198 225 255'     # accent-text
+          rgb-status-success: '48 209 88'           # positive #30D158
+          rgb-status-success-subtle: '19 52 45'     # positive-tint over the pane
+          rgb-status-success-border: '48 209 88'    # positive
+          rgb-status-success-strong: '172 237 188'  # positive-text #ACEDBC
+          rgb-status-warning: '255 199 92'          # caution #FFC75C
+          rgb-status-warning-subtle: '57 50 46'     # caution-tint over the pane
+          rgb-status-warning-border: '255 199 92'   # caution
+          rgb-status-warning-strong: '255 213 133'  # caution-text #FFD585
+          rgb-text-warning: '255 213 133'           # caution-text
+          rgb-status-error: '255 107 107'           # critical #FF6B6B
+          rgb-status-error-subtle: '57 33 49'       # critical-tint over the pane
+          rgb-status-error-border: '255 107 107'    # critical
+          rgb-status-error-strong: '255 211 211'    # critical-text #FFD3D3
+          rgb-text-destructive: '255 208 208'       # destructive-text #FFD0D0
+          rgb-surface-destructive: '255 107 107'    # critical
+          rgb-surface-destructive-hover: '235 98 98'  # critical, pressed 8% darker
+          rgb-border-destructive: '255 107 107'     # critical
+          rgb-status-neutral: '169 169 176'         # neutral #A9A9B0
+          rgb-status-neutral-subtle: '37 41 58'     # neutral-tint over the pane
+          rgb-status-neutral-border: '42 46 62'     # rule
+          # Data: data-1 to data-8, in order
+          rgb-series-1: '0 145 253'                 # #0091FD
+          rgb-series-2: '217 89 38'                 # #D95926
+          rgb-series-3: '25 158 112'                # #199E70
+          rgb-series-4: '201 133 0'                 # #C98500
+          rgb-series-5: '213 81 129'                # #D55181
+          rgb-series-6: '0 131 0'                   # #008300
+          rgb-series-7: '144 133 233'               # #9085E9
+          rgb-series-8: '230 103 103'               # #E66767
         appearance:
-          fontFamily: "'Mona Sans', system-ui, sans-serif"                  # brand body
-          displayFontFamily: "'Schibsted Grotesk', 'Mona Sans', system-ui, sans-serif"  # brand display
-          dialogTitleFontFamily: "'Schibsted Grotesk', 'Mona Sans', system-ui, sans-serif"
-          monoFontFamily: "'JetBrains Mono', ui-monospace, monospace"       # brand utility
-          controlFontWeight: '600'                                           # brand: semibold buttons
-          dialogTitleFontWeight: '600'
+          <<: *nearaiAppearance
+          menuShadow: '0 18px 36px rgb(2 3 10 / 0.6)'      # shadow-float
+          tooltipShadow: '0 18px 36px rgb(2 3 10 / 0.6)'   # shadow-float
   customWelcome: 'Private AI for NEAR AI.'
+  # The sidebar leads with the NEAR AI wordmark (logo kit Primary, white on dark and black on
+  # light) and the brand-blue "N" mark from the tile, in place of the app title. A reply shows
+  # Ironclaw's NEAR process indicator on its line until it completes.
+  brand:
+    mark: '/assets/nearai-mark.svg'
+    wordmark:
+      light: '/assets/nearai-wordmark-black.svg'
+      dark: '/assets/nearai-wordmark-white.svg'
+    indicator: 'near'     # a reply in progress carries the N, a light chasing its spine; thoughts rows drop their glyph
+  messageAuthor: false    # replies carry no name-and-icon line; the thread reads as one voice
   modelSelect: true
   parameters: false
   presets: false
@@ -205,3 +320,4 @@ endpoints:
       titleConvo: true
       titleModel: 'Qwen/Qwen3.6-35B-A3B-FP8'
       modelDisplayLabel: 'NEAR AI'
+      iconURL: '/assets/nearai-chat.svg'      # a chat bubble around the N, e.g. on chat rows

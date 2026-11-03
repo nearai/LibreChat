@@ -104,7 +104,6 @@ function renderPanel({
   onExpand = jest.fn(),
   onNavigate,
   initialPanel = DEFAULT_PANEL,
-  switchToHistory = true,
 }: {
   expanded?: boolean;
   links?: NavLink[];
@@ -112,7 +111,6 @@ function renderPanel({
   onExpand?: jest.Mock;
   onNavigate?: jest.Mock;
   initialPanel?: string;
-  switchToHistory?: boolean;
 } = {}) {
   if (initialPanel !== DEFAULT_PANEL) {
     localStorage.setItem('side:active-panel', initialPanel);
@@ -129,7 +127,6 @@ function renderPanel({
               onCollapse={onCollapse}
               onExpand={onExpand}
               onNavigate={onNavigate}
-              switchToHistory={switchToHistory}
             />
           </ActivePanelProvider>
         </RecoilRoot>
@@ -198,29 +195,9 @@ describe('ExpandedPanel', () => {
     });
   });
 
-  describe('NewChatButton panel switch', () => {
-    it('switches to chat history panel on new chat click when setting is enabled', () => {
-      renderPanel({ expanded: true, initialPanel: 'prompts' });
+  it('leaves New chat to the panel masthead and the chat header', () => {
+    renderPanel({ expanded: true });
 
-      const newChatLink = screen.getByTestId('new-chat-button');
-      fireEvent.click(newChatLink);
-
-      expect(mockNewConversation).toHaveBeenCalledTimes(1);
-      expect(localStorage.getItem('side:active-panel')).toBe(DEFAULT_PANEL);
-    });
-
-    it('does not switch panel on new chat click when setting is disabled', () => {
-      renderPanel({
-        expanded: true,
-        initialPanel: 'prompts',
-        switchToHistory: false,
-      });
-
-      const newChatLink = screen.getByTestId('new-chat-button');
-      fireEvent.click(newChatLink);
-
-      expect(mockNewConversation).toHaveBeenCalledTimes(1);
-      expect(localStorage.getItem('side:active-panel')).toBe('prompts');
-    });
+    expect(screen.queryByTestId('new-chat-button')).not.toBeInTheDocument();
   });
 });

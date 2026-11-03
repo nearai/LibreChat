@@ -1560,6 +1560,112 @@ html {
   }
 }
 
+/* NEAR's process mark (Messages/ui/Mark.tsx `ProcessMark`), from Ironclaw's web UI
+   (near-process-indicator.tsx, MIT, NEAR AI): the N dims while a light chases its spine and the
+   glyph turns once and beats twice. A brand that chooses it (`interface.brand.indicator: near`,
+   which Root sets on the root) shows it on a reply's first line while the reply is produced,
+   in place of the pending-reply dot and the reasoning rows' lightbulb. */
+@keyframes lc-near-pulse {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  22%,
+  50% {
+    transform: rotate(360deg) scale(1);
+  }
+  58% {
+    transform: rotate(360deg) scale(1.28);
+  }
+  66% {
+    transform: rotate(360deg) scale(0.98);
+  }
+  74% {
+    transform: rotate(360deg) scale(1.16);
+  }
+  82%,
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+/* The reply's own mark covers the wait, so the pending dot steps aside. */
+:root[data-thinking-indicator='near'] .submitting .result-thinking:empty:last-child:after {
+  content: none;
+}
+
+/* The brand blue is the mark's artwork, not a theme role, so it is set here with the mark
+   rather than taken from the palette. */
+@keyframes lc-near-chase {
+  to {
+    stroke-dashoffset: -66;
+  }
+}
+.lc-near-mark {
+  color: #0091fd;
+  flex: none;
+  overflow: visible;
+}
+.lc-near-mark-base {
+  fill: currentColor;
+}
+.lc-near-mark.is-working {
+  animation: lc-near-pulse 2s ease-in-out infinite;
+}
+.lc-near-mark.is-working .lc-near-mark-base {
+  opacity: 0.24;
+}
+/* A short lit segment and a long gap, so one light travels the ~66-unit spine; the keyframe
+   shifts one whole period, so the loop has no seam. */
+.lc-near-mark-light {
+  animation: lc-near-chase 1.1s linear infinite;
+  fill: none;
+  filter: drop-shadow(0 0 1.5px currentColor);
+  stroke: currentColor;
+  stroke-dasharray: 10 56;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lc-near-mark.is-working {
+    animation: none;
+  }
+  .lc-near-mark.is-working .lc-near-mark-base {
+    opacity: 1;
+  }
+  .lc-near-mark-light {
+    display: none;
+  }
+}
+
+/* With the brand's mark on the reply itself, the thoughts row keeps no glyph, and drops the
+   slot that held it so its label sits flush with the reply. */
+:root[data-thinking-indicator='near'] .lc-reasoning-slot {
+  display: none;
+}
+.lc-reply-mark {
+  display: none;
+}
+:root[data-thinking-indicator='near'] .lc-reply-mark {
+  display: block;
+}
+
+/* `interface.messageAuthor: false` (Root sets the attribute): the name and icon above a reply
+   leave the page but stay in the accessibility tree, as Tailwind's `sr-only` keeps text. Only
+   the agent-side header carries the marker; a user-side turn written by an agent keeps its
+   author, since that name is what tells the reader someone else wrote it. */
+:root[data-hide-message-author] [data-author-header='agent'] {
+  border-width: 0;
+  clip: rect(0, 0, 0, 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
 .shadow-stroke {
   position: relative;
 }

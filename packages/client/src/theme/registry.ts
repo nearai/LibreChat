@@ -127,6 +127,7 @@ export const layerRoleSources: ReadonlyArray<
   readonly [keyof IThemeRGB, keyof IThemeRGB, keyof IThemeRGB]
 > = [
   ['rgb-surface-canvas', 'rgb-surface-primary-alt', 'rgb-surface-primary-alt'],
+  ['rgb-surface-shell', 'rgb-surface-primary-alt', 'rgb-surface-primary-alt'],
   ['rgb-surface-user-message', 'rgb-surface-tertiary', 'rgb-surface-tertiary'],
   ['rgb-surface-card', 'rgb-surface-secondary', 'rgb-surface-secondary'],
   ['rgb-surface-card-hover', 'rgb-surface-tertiary', 'rgb-surface-tertiary'],
@@ -654,6 +655,13 @@ export function resolveTheme(theme: ThemeDefinition, mode: ThemeMode): ResolvedT
     customColors?.['rgb-text-primary'] !== undefined
       ? { 'rgb-shimmer-base': customColors['rgb-text-primary'] }
       : {};
+  /** The composer's placeholder was set in `text-tertiary` before it had a role, so a theme that
+   *  repaints tertiary keeps its placeholder on it. */
+  const textPlaceholderFallback: IThemeRGB =
+    customColors?.['rgb-text-placeholder'] === undefined &&
+    customColors?.['rgb-text-tertiary'] !== undefined
+      ? { 'rgb-text-placeholder': customColors['rgb-text-tertiary'] }
+      : {};
   const textMutedFallback: IThemeRGB =
     customColors?.['rgb-text-muted'] === undefined &&
     customColors?.['rgb-text-tertiary'] !== undefined
@@ -829,6 +837,7 @@ export function resolveTheme(theme: ThemeDefinition, mode: ThemeMode): ResolvedT
       ...composerHoverFallback,
       ...shimmerBaseFallback,
       ...textMutedFallback,
+      ...textPlaceholderFallback,
       ...proseLinkFallback,
       ...proseFallback,
       ...avatarPlaceholderFallback,

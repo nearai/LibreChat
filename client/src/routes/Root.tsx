@@ -49,6 +49,7 @@ import ChatSettingsProvider from './ChatSettings';
 import { useHealthCheck } from '~/data-provider';
 import Settings from '~/components/Nav/Settings';
 import { Banner } from '~/components/Banners';
+import { cn } from '~/utils';
 import store from '~/store';
 
 /** Isolates the unseen-reply subscription so its updates re-render only this node, not `Root`. */
@@ -162,6 +163,30 @@ function RootLayout() {
     return () => root.removeAttribute('data-drawer-nav');
   }, [isSmallScreen]);
 
+  /** The pre-response indicator is drawn in CSS (style.css `.result-thinking`), so the brand's
+   *  choice reaches it as an attribute on the root rather than as a prop. */
+  const thinkingIndicator = config?.interface?.brand?.indicator;
+  useEffect(() => {
+    const root = document.documentElement;
+    if (thinkingIndicator == null || thinkingIndicator === 'dot') {
+      delete root.dataset.thinkingIndicator;
+      return;
+    }
+    root.dataset.thinkingIndicator = thinkingIndicator;
+    return () => {
+      delete root.dataset.thinkingIndicator;
+    };
+  }, [thinkingIndicator]);
+
+  /** The reply's author line is hidden in CSS (style.css `data-author-header`), for the same
+   *  reason as the indicator: one root attribute instead of a config read in every row. */
+  const hideMessageAuthor = config?.interface?.messageAuthor === false;
+  useEffect(() => {
+    const root = document.documentElement;
+    root.toggleAttribute('data-hide-message-author', hideMessageAuthor);
+    return () => root.removeAttribute('data-hide-message-author');
+  }, [hideMessageAuthor]);
+
   const handleAcceptTerms = () => {
     setShowTerms(false);
   };
@@ -185,7 +210,12 @@ function RootLayout() {
                 <Banner onHeightChange={setBannerHeight} />
                 <div className="flex" style={{ height: `calc(100dvh - ${bannerHeight}px)` }}>
                   <div
-                    className="relative z-0 flex h-full w-full overflow-hidden"
+                    /** On desktop the shell is a frame: the rail sits on it and the content
+                     *  pane floats over it, inset from the window edge. */
+                    className={cn(
+                      'relative z-0 flex h-full w-full overflow-hidden',
+                      !isSmallScreen && 'bg-surface-shell',
+                    )}
                     /** The drawer and the pane both read this, so their travel
                      *  cannot disagree about how far the drawer opens. */
                     style={
@@ -208,7 +238,15 @@ function RootLayout() {
                       /** Focus target of last resort when the drawer closes on a
                        *  route that renders no opener. Not in the tab order. */
                       tabIndex={-1}
-                      className="relative flex h-full max-w-full flex-1 flex-col overflow-hidden focus:outline-hidden"
+                      className={cn(
+                        'relative flex max-w-full flex-1 flex-col overflow-hidden focus:outline-hidden',
+                        isSmallScreen
+                          ? 'h-full'
+                          : /** Joins the sidebar panel, which rounds the pane's leading corners
+                             *  while it is open (`data-panel` on the sidebar), and rounds them
+                             *  itself once the panel closes. */
+                            'rounded-r-theme-surface-lg [[data-panel=closed]~&]:rounded-l-theme-surface-lg my-2 mr-2',
+                      )}
                       style={{
                         /** A percentage of the pane's own width, so it tracks the
                          *  drawer without a literal and survives rotation. */

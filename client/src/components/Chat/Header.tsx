@@ -28,9 +28,13 @@ const defaultInterface = getConfigDefaults().interface;
 
 /** Keep one DOM order while sharing the sidebar's scaled drawer breakpoint. */
 function Header({
+  title,
   parentConversationId,
   readOnly = false,
 }: {
+  /** The open conversation's title. The desktop header leads with it; the model picker sits in
+   *  the composer there. */
+  title?: string;
   parentConversationId?: string;
   readOnly?: boolean;
 }) {
@@ -84,7 +88,16 @@ function Header({
   return (
     /* The composer review is in a z-10 stacking context. Keep header controls
        above it when a tall review reaches the top of a short viewport. */
-    <div className="from-surface-canvas via-surface-canvas/70 text-text-primary md:from-surface-canvas/80 md:via-surface-canvas/50 2xl:from-surface-canvas/0 absolute top-0 z-20 flex h-[3.25rem] w-full items-center gap-2 bg-gradient-to-b to-transparent p-2 font-semibold 2xl:via-transparent">
+    <div
+      className={cn(
+        'text-text-primary z-20 flex w-full items-center gap-2 font-semibold',
+        isSmallScreen
+          ? 'from-surface-canvas via-surface-canvas/70 absolute top-0 h-[3.25rem] bg-gradient-to-b to-transparent p-2'
+          : /* A toolbar on the shell, above the canvas card: nothing to fade, and the same
+               height as the sidebar's brand row beside it. */
+            'relative h-12 shrink-0 px-2',
+      )}
+    >
       <div className={cn('flex-shrink-0 items-center', isSmallScreen ? 'flex' : 'hidden')}>
         <OpenSidebar testId="header-open-sidebar-button" />
       </div>
@@ -99,7 +112,10 @@ function Header({
         {parentConversationId != null && (
           <SubagentThreadLink threadId={parentConversationId} labelClassName="hidden lg:inline" />
         )}
-        {!readOnly && <ModelSelector startupConfig={startupConfig} />}
+        {!readOnly && isSmallScreen && <ModelSelector startupConfig={startupConfig} />}
+        {!isSmallScreen && title && (
+          <span className="text-text-primary min-w-0 truncate text-sm font-medium">{title}</span>
+        )}
         {!readOnly && interfaceConfig.presets === true && interfaceConfig.modelSelect === true && (
           <PresetsMenu />
         )}
@@ -118,7 +134,9 @@ function Header({
       <div className={cn('flex shrink-0 items-center gap-2', hiddenBehindNav)}>
         {!readOnly && <AttestationShield />}
         {showTemporaryChat && <TemporaryChatIndicator />}
-        {!isNewChat && <NewChat className={isSmallScreen ? undefined : 'hidden'} />}
+        {/* On desktop the panel's masthead offers New chat, so the header takes it over only
+            while the panel is closed. */}
+        {!isNewChat && <NewChat className={isSmallScreen || !navVisible ? undefined : 'hidden'} />}
         {!isNewChat && parentConversationId == null && (
           <BackgroundTasksButton
             key={routeConversationId}

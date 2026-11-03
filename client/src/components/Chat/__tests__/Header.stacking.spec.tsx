@@ -22,8 +22,11 @@ jest.mock('librechat-data-provider', () => ({
     jest.requireActual('librechat-data-provider').isForcedTemporaryRetention,
 }));
 jest.mock('~/data-provider', () => ({ useGetStartupConfig: () => ({ data: undefined }) }));
+/** The shield reaches the theme registry, which the partial data-provider mock above omits. */
+jest.mock('../Attestation', () => ({ AttestationShield: () => null }));
 jest.mock('~/hooks', () => ({ useHasAccess: () => false }));
-jest.mock('~/hooks/Nav/useDrawerViewport', () => () => false);
+let mockSmallScreen = false;
+jest.mock('~/hooks/Nav/useDrawerViewport', () => () => mockSmallScreen);
 jest.mock('~/store', () => ({
   __esModule: true,
   default: {
@@ -61,13 +64,22 @@ describe('Header stacking', () => {
   beforeEach(() => {
     backgroundTasks.mockClear();
     mockEndpoint.current = 'agents';
+    mockSmallScreen = false;
   });
 
   test('keeps header controls above the z-10 composer approval review', () => {
+    mockSmallScreen = true;
     const { container } = render(<Header />);
 
     expect(container.firstElementChild).toHaveClass('absolute', 'top-0', 'z-20');
     expect(backgroundTasks).toHaveBeenCalled();
+  });
+
+  test('sits in the toolbar band above the canvas on desktop rather than overlaying it', () => {
+    const { container } = render(<Header />);
+
+    expect(container.firstElementChild).toHaveClass('relative', 'z-20', 'h-12');
+    expect(container.firstElementChild).not.toHaveClass('absolute');
   });
 
   test('keeps conversation task controls mounted across endpoint switches', () => {

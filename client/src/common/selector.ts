@@ -22,4 +22,7 @@ export interface SelectedValues {
 
 export interface ModelSelectorProps {
   startupConfig: TStartupConfig | undefined;
+  /** `header` is the bordered trigger at the top of the chat; `composer` is the quiet pill in the
+   *  composer's action row, set in mono with a chevron. */
+  variant?: 'header' | 'composer';
 }

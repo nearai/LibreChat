@@ -1,7 +1,12 @@
 import { useState, useId } from 'react';
 import { Ellipsis } from 'lucide-react';
 import * as Ariakit from '@ariakit/react';
-import { DropdownPopup, TooltipAnchor, useMediaQuery } from '@librechat/client';
+import {
+  DropdownPopup,
+  TooltipAnchor,
+  useMediaQuery,
+  chromeIconButtonClasses,
+} from '@librechat/client';
 import useChatOptions from '~/hooks/Chat/useChatOptions';
 import { useLocalize } from '~/hooks';
 
@@ -46,7 +51,7 @@ export default function ExportAndShareMenu({
               <Ariakit.MenuButton
                 id="export-menu-button"
                 aria-label={description}
-                className="border-border-chrome bg-presentation text-text-primary hover:bg-surface-tertiary aria-expanded:bg-surface-tertiary relative inline-flex size-9 shrink-0 items-center justify-center rounded-xl border transition-all ease-in-out disabled:pointer-events-none disabled:opacity-50"
+                className={chromeIconButtonClasses()}
               >
                 <Ellipsis
                   className="icon-md text-text-primary"

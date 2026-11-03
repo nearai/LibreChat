@@ -207,9 +207,9 @@ export default function useTextarea({
           ? getEntityName({ name: entityName, isAgent, localize })
           : getSender(conversation as TEndpointOption);
 
-      return `${localize('com_endpoint_message_new', {
+      return localize('com_endpoint_ask_anything', {
         0: sender ? sender : localize('com_endpoint_ai'),
-      })}`;
+      });
     };
 
     const placeholderText = getPlaceholderText();

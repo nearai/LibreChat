@@ -121,6 +121,7 @@ describe('Landing agent contact', () => {
     renderLanding();
 
     expect(screen.getByText('Portal Remote Agent')).toBeInTheDocument();
+    expect(screen.getByTestId('convo-icon')).toBeInTheDocument();
     expect(screen.getByText('Remote Agent Showcase')).toBeInTheDocument();
     expect(screen.getByText('Contact:')).toBeInTheDocument();
     expect(screen.getByText('Owner User')).toBeInTheDocument();
@@ -224,11 +225,12 @@ describe('Landing temporary chat empty state', () => {
     expect(screen.queryByText('Contact:')).not.toBeInTheDocument();
   });
 
-  it('keeps the normal greeting when temporary chat is off', () => {
+  it('keeps the normal greeting, standing alone, when temporary chat is off', () => {
     renderLanding();
 
     expect(screen.getByText('Welcome')).toBeInTheDocument();
     expect(screen.queryByText('Temporary Chat')).not.toBeInTheDocument();
-    expect(screen.getByTestId('convo-icon')).toBeInTheDocument();
+    /** A plain greeting is the screen's one headline; the icon introduces a named entity. */
+    expect(screen.queryByTestId('convo-icon')).not.toBeInTheDocument();
   });
 });

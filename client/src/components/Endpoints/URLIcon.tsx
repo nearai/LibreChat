@@ -2,6 +2,9 @@ import React, { memo, useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { pxToRem, ProviderIcon } from '@librechat/client';
 import type { ProviderId } from 'librechat-data-provider';
+import CustomIcon from '~/components/ui/CustomIcon';
+import { isSvgIcon } from '~/utils/icons';
+import { cn } from '~/utils';
 
 /** Intrinsic fallback for parents without a definite size; `h-full w-full` scales it elsewhere. */
 const FALLBACK_ICON_PX = 20;
@@ -48,19 +51,35 @@ export const URLIcon = memo(
       );
     }
 
+    /** A vector icon is a mark: drawn whole rather than cropped to the avatar circle that a
+     *  photo or raster logo fills. A one-ink mark also takes the surrounding text color, the way
+     *  MCP and group icons do (`CustomIcon`), so it sits with the icons around it. */
+    const isMark = isSvgIcon(iconURL);
     return (
-      <div className={className} style={containerStyle}>
-        <img
-          src={iconURL}
-          alt={altName ?? 'Icon'}
-          style={imageStyle}
-          className="object-cover"
-          onError={handleImageError}
-          loading="lazy"
-          decoding="async"
-          width={FALLBACK_ICON_PX}
-          height={FALLBACK_ICON_PX}
-        />
+      <div
+        className={cn(className, isMark && 'overflow-visible rounded-none')}
+        style={containerStyle}
+      >
+        {isMark ? (
+          <CustomIcon
+            src={iconURL}
+            alt={altName ?? 'Icon'}
+            className="size-full object-contain"
+            onError={handleImageError}
+          />
+        ) : (
+          <img
+            src={iconURL}
+            alt={altName ?? 'Icon'}
+            style={imageStyle}
+            className="object-cover"
+            onError={handleImageError}
+            loading="lazy"
+            decoding="async"
+            width={FALLBACK_ICON_PX}
+            height={FALLBACK_ICON_PX}
+          />
+        )}
       </div>
     );
   },

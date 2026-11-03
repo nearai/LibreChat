@@ -185,6 +185,7 @@ const ContentRender = memo(function ContentRender({
       hasParallelContent={hasParallelContent}
       fullWidth={maximizeChatSpace}
       isEditing={edit}
+      working={isSubmitting && isLatestMessage && msg.isCreatedByUser !== true}
       footer={
         <SubRow classes={cn(messageFooterClasses, msg.isCreatedByUser && 'justify-end')}>
           {/* The reading holds the column start: it takes over the slot the streaming

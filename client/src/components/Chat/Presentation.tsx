@@ -15,8 +15,8 @@ import { EditorProvider, ArtifactsProvider } from '~/Providers';
 import { SidePanelGroup } from '~/components/SidePanel';
 import AppChatSurface from '~/components/Chat/Surface';
 import { lazyWithRecovery } from '~/lib/assets/lazy';
+import { cn, failedFileIdsFrom } from '~/utils';
 import { useSetFilesToDelete } from '~/hooks';
-import { failedFileIdsFrom } from '~/utils';
 import store from '~/store';
 
 const Artifacts = lazyWithRecovery(() => import('~/components/Artifacts/Artifacts'));
@@ -26,9 +26,13 @@ const SubagentThreadPanel = lazyWithRecovery(
 
 export default function Presentation({
   children,
+  toolbar,
   routePending = false,
 }: {
   children: React.ReactNode;
+  /** The chat's toolbar. When given it rides above the canvas on the shell, and the canvas
+   *  becomes a card beneath it; without it the canvas runs to the top of the pane. */
+  toolbar?: React.ReactNode;
   routePending?: boolean;
 }) {
   const artifacts = useRecoilValue(store.artifactsState);
@@ -168,29 +172,47 @@ export default function Presentation({
   const panelElement = (isUndocked ? null : artifactsElement) ?? subagentElement;
 
   return (
-    <DragDropWrapper className="bg-surface-canvas relative flex w-full grow overflow-hidden">
-      <AppChatSurface>
-        {/* The editor buffer belongs to the pane's session, not to the window
+    <DragDropWrapper
+      className={cn(
+        'relative flex w-full grow overflow-hidden',
+        toolbar != null ? 'flex-col' : 'bg-surface-canvas',
+      )}
+    >
+      {toolbar}
+      <div
+        className={
+          toolbar != null
+            ? /* The card joins the sidebar panel while that is open (`data-panel` on the
+                 sidebar), so its leading top corner squares off there. */
+              'bg-surface-canvas rounded-t-theme-surface-lg relative flex min-h-0 w-full flex-1 overflow-hidden [[data-panel=open]~*_&]:rounded-tl-none'
+            : 'contents'
+        }
+      >
+        <AppChatSurface>
+          {/* The editor buffer belongs to the pane's session, not to the window
             it happens to be in: hoisted, an undock keeps unsaved edits. */}
-        <EditorProvider>
-          <ParentSubagentsProvider
-            conversationId={conversationId ?? ''}
-            enabled={conversationEndpoint === EModelEndpoint.agents && conversationAgentId != null}
-            isSubmitting={isSubmitting}
-          >
-            <SidePanelGroup panel={panelElement}>
-              <main className="flex h-full flex-col overflow-y-auto" role="main">
-                <MessageSurfaceContext.Provider value="bg-surface-canvas">
-                  {children}
-                </MessageSurfaceContext.Provider>
-              </main>
-            </SidePanelGroup>
-          </ParentSubagentsProvider>
-          {isUndocked && artifactsElement != null && (
-            <UndockedArtifacts hidden={routePending}>{artifactsElement}</UndockedArtifacts>
-          )}
-        </EditorProvider>
-      </AppChatSurface>
+          <EditorProvider>
+            <ParentSubagentsProvider
+              conversationId={conversationId ?? ''}
+              enabled={
+                conversationEndpoint === EModelEndpoint.agents && conversationAgentId != null
+              }
+              isSubmitting={isSubmitting}
+            >
+              <SidePanelGroup panel={panelElement}>
+                <main className="flex h-full flex-col overflow-y-auto" role="main">
+                  <MessageSurfaceContext.Provider value="bg-surface-canvas">
+                    {children}
+                  </MessageSurfaceContext.Provider>
+                </main>
+              </SidePanelGroup>
+            </ParentSubagentsProvider>
+            {isUndocked && artifactsElement != null && (
+              <UndockedArtifacts hidden={routePending}>{artifactsElement}</UndockedArtifacts>
+            )}
+          </EditorProvider>
+        </AppChatSurface>
+      </div>
     </DragDropWrapper>
   );
 }

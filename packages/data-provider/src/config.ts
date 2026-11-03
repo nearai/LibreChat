@@ -2647,7 +2647,21 @@ export const interfaceSchema = z
       .optional(),
     termsOfService: termsOfServiceSchema.optional(),
     customWelcome: z.string().optional(),
+    /** The marks the sidebar shows in place of the app title: an optional mark beside a wordmark
+     *  drawn per color mode. Each is an image path or URL the client loads. `indicator` picks what
+     *  a reply shows before its first words: LibreChat's breathing dot (the default) or the NEAR
+     *  "N" with a light chasing its spine. */
+    brand: z
+      .object({
+        mark: z.string().optional(),
+        wordmark: z.object({ light: z.string(), dark: z.string() }).optional(),
+        indicator: z.enum(['dot', 'near']).optional(),
+      })
+      .optional(),
     mcpServers: mcpServersSchema.optional(),
+    /** `false` takes the name-and-icon line off each reply in a thread; screen readers still
+     *  hear it. A user-side turn an agent wrote keeps its author either way. */
+    messageAuthor: z.boolean().optional(),
     modelSelect: z.boolean().optional(),
     /** Set to false during a rolling upgrade, until every API replica supports title ownership and old title jobs drain. */
     runningChatRename: z.boolean().default(true),

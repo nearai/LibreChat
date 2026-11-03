@@ -1,8 +1,8 @@
 import { memo, useRef } from 'react';
 import * as Ariakit from '@ariakit/react';
-import { TooltipAnchor } from '@librechat/client';
 import { dataService, QueryKeys } from 'librechat-data-provider';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { TooltipAnchor, chromeIconButtonClasses } from '@librechat/client';
 import { ExternalLink, Loader2, RefreshCw, ShieldAlert, ShieldCheck, X } from 'lucide-react';
 import type { TNearAIAttestationResponse } from 'librechat-data-provider';
 import { useNearAIAttestationQuery } from '~/data-provider/Misc/queries';
@@ -67,7 +67,7 @@ function Shield() {
             store={popover}
             aria-label={label}
             data-testid="header-nearai-shield"
-            className="border-border-chrome bg-presentation hover:bg-surface-tertiary aria-expanded:bg-surface-tertiary inline-flex size-9 flex-shrink-0 items-center justify-center rounded-xl border transition-all ease-in-out"
+            className={chromeIconButtonClasses()}
           >
             <Icon aria-hidden="true" className={cn('icon-md', iconColors[state])} />
           </Ariakit.PopoverDisclosure>
