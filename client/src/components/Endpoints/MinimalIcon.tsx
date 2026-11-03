@@ -62,13 +62,11 @@ const MinimalIcon: React.FC<IconProps> = (props) => {
 
   if (imageURL != null) {
     /** `CustomIcon` tints a one-ink SVG to the current color, as MCP and group icons are, and
-     *  draws any other image as it is. */
+     *  draws any other image as it is. The caller's classes size and color the box it fills. */
     return renderWrapper(
-      <CustomIcon
-        className={cn('icon-sm', iconClassName)}
-        src={imageURL}
-        alt={`${endpoint} Icon`}
-      />,
+      <span className={cn('icon-sm inline-flex', iconClassName)}>
+        <CustomIcon className="size-full" src={imageURL} alt={`${endpoint} Icon`} />
+      </span>,
       name,
     );
   }

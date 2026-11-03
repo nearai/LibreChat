@@ -302,10 +302,7 @@
       "count": 1
     },
     "shadcn/no-restyle": {
-      "count": 16
-    },
-    "shadcn/require-static-classes": {
-      "count": 2
+      "count": 12
     }
   },
   "client/src/components/Chat/Menus/Endpoints/components/EndpointItem.tsx": {
@@ -335,12 +332,12 @@
   },
   "client/src/components/Chat/Menus/HeaderMenu.tsx": {
     "shadcn/no-restyle": {
-      "count": 3
+      "count": 1
     }
   },
   "client/src/components/Chat/Menus/NewChat.tsx": {
     "shadcn/no-restyle": {
-      "count": 3
+      "count": 1
     }
   },
   "client/src/components/Chat/Menus/Presets/EditPresetDialog.tsx": {
@@ -814,7 +811,7 @@
   },
   "client/src/components/Chat/Trace/Button.tsx": {
     "shadcn/no-restyle": {
-      "count": 3
+      "count": 1
     }
   },
   "client/src/components/Chat/Trace/Inspector.tsx": {
@@ -1962,11 +1959,6 @@
   "client/src/components/Tools/ToolItem.tsx": {
     "shadcn/no-arbitrary-values": {
       "count": 3
-    }
-  },
-  "client/src/components/UnifiedSidebar/ExpandedPanel.tsx": {
-    "shadcn/no-restyle": {
-      "count": 6
     }
   },
   "client/src/components/UnifiedSidebar/Sidebar.tsx": {
