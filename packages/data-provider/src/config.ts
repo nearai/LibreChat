@@ -2649,8 +2649,8 @@ export const interfaceSchema = z
     customWelcome: z.string().optional(),
     /** The marks the sidebar shows in place of the app title: an optional mark beside a wordmark
      *  drawn per color mode. Each is an image path or URL the client loads. `indicator` picks what
-     *  a reply shows before its first words: LibreChat's breathing dot (the default) or the NEAR
-     *  "N" with a light chasing its spine. */
+     *  a reply in progress shows while it waits and beside a streaming thought: LibreChat's
+     *  breathing dot and lightbulb (the default) or the NEAR "N" with a light chasing its spine. */
     brand: z
       .object({
         mark: z.string().optional(),

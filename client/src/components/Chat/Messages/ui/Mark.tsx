@@ -11,9 +11,9 @@ const NEAR_SPINE = 'M2.6 22.2V2.4L21.4 21.6V1.8';
 
 /**
  * NEAR's process mark: while `working`, the N dims and a light chases its spine as the glyph
- * turns and beats; at rest it is the solid mark. A reply carries it on its first line while it
- * is being produced (`MessageRow`). The motion and the brand blue live in style.css
- * (`.lc-near-mark`), and nothing moves under reduced motion.
+ * turns and beats; at rest it is the solid mark. The motion and the brand blue live in style.css
+ * (`.lc-near-mark`), and nothing moves under reduced motion. Rendered with `lc-live-mark`, it
+ * stands in for a live glyph only for a brand that chooses it.
  */
 export const ProcessMark = memo(function ProcessMark({
   working = false,
@@ -45,3 +45,12 @@ export const ProcessMark = memo(function ProcessMark({
     </svg>
   );
 });
+
+/**
+ * The working mark in the waiting dot's place. The dot (`.result-thinking` in style.css) is drawn
+ * 11px above its line, so the mark goes just before the dot's span, inside the same positioned
+ * line, and centers on it.
+ */
+export function WaitMark() {
+  return <ProcessMark working className="lc-live-mark absolute -top-3.25 -left-0.5 size-4" />;
+}

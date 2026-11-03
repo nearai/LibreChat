@@ -1563,8 +1563,8 @@ html {
 /* NEAR's process mark (Messages/ui/Mark.tsx `ProcessMark`), from Ironclaw's web UI
    (near-process-indicator.tsx, MIT, NEAR AI): the N dims while a light chases its spine and the
    glyph turns once and beats twice. A brand that chooses it (`interface.brand.indicator: near`,
-   which Root sets on the root) shows it on a reply's first line while the reply is produced,
-   in place of the pending-reply dot and the reasoning rows' lightbulb. */
+   which Root sets on the root) shows it, working, in place of the waiting dot and of the live
+   reasoning row's lightbulb, so it sits beside the thought as it streams. */
 @keyframes lc-near-pulse {
   0% {
     transform: rotate(0deg) scale(1);
@@ -1587,7 +1587,7 @@ html {
     transform: rotate(360deg) scale(1);
   }
 }
-/* The reply's own mark covers the wait, so the pending dot steps aside. */
+/* The mark drawn at the dot (`WaitMark`) covers the wait, so the dot steps aside. */
 :root[data-thinking-indicator='near'] .submitting .result-thinking:empty:last-child:after {
   content: none;
 }
@@ -1638,16 +1638,18 @@ html {
   }
 }
 
-/* With the brand's mark on the reply itself, the thoughts row keeps no glyph, and drops the
-   slot that held it so its label sits flush with the reply. */
+/* Each live site draws the mark beside the glyph it replaces and the root picks one, so no row
+   subscribes to the config. Settled thoughts keep no glyph, and drop the slot that held it so
+   the label sits flush with the reply. */
+.lc-live-mark {
+  display: none;
+}
+:root[data-thinking-indicator='near'] .lc-live-mark {
+  display: block;
+}
+:root[data-thinking-indicator='near'] .lc-live-glyph,
 :root[data-thinking-indicator='near'] .lc-reasoning-slot {
   display: none;
-}
-.lc-reply-mark {
-  display: none;
-}
-:root[data-thinking-indicator='near'] .lc-reply-mark {
-  display: block;
 }
 
 /* `interface.messageAuthor: false` (Root sets the attribute): the name and icon above a reply

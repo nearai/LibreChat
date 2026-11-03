@@ -1,6 +1,6 @@
 import React from 'react';
 import { render } from '@testing-library/react';
-import { ProcessMark } from '../Mark';
+import { ProcessMark, WaitMark } from '../Mark';
 
 describe('ProcessMark', () => {
   it('draws the solid mark at rest, with no light to chase', () => {
@@ -35,5 +35,24 @@ describe('ProcessMark', () => {
     const ids = Array.from(container.querySelectorAll('clipPath')).map((clip) => clip.id);
 
     expect(new Set(ids).size).toBe(2);
+  });
+});
+
+describe('WaitMark', () => {
+  /** It goes beside the waiting dot's span, so the dot keeps the empty last-child position its
+   *  style needs, and only the root attribute decides which of the two shows. */
+  it('is a working mark that a non-NEAR brand never shows', () => {
+    const { container } = render(
+      <p className="submitting relative">
+        <WaitMark />
+        <span className="result-thinking" />
+      </p>,
+    );
+    const mark = container.querySelector('svg');
+
+    expect(mark).toHaveClass('lc-live-mark', 'is-working', 'absolute');
+    expect(container.querySelector('.result-thinking')).toBe(
+      container.querySelector('p')?.lastChild,
+    );
   });
 });

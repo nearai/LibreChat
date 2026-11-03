@@ -7,7 +7,7 @@ NEAR AI's own instance, "Private AI for NEAR AI". The general deploy steps and a
 | What | Where | Kind |
 |---|---|---|
 | Near AI OS theme (light and dark), welcome text, Google sign-in restricted to `near.ai` | `nearai/deploy/nearai-internal.yaml` | Config: restart to apply |
-| Sidebar brand (N mark and "near ai" wordmark); NEAR's process mark on a reply's line while it is produced (thoughts rows then carry no glyph); replies without an author line; a chat bubble around the N, in the row's icon color, on chat rows | `interface.brand`, `interface.messageAuthor` and the endpoint's `iconURL` in the same file; marks in `client/public/assets/nearai-*.svg` | Config and assets |
+| Sidebar brand (N mark and "near ai" wordmark); NEAR's process mark beside a streaming thought and in place of the waiting dot (settled thoughts carry no glyph); replies without an author line; a chat bubble around the N, in the row's icon color, on chat rows | `interface.brand`, `interface.messageAuthor` and the endpoint's `iconURL` in the same file; marks in `client/public/assets/nearai-*.svg` | Config and assets |
 | NEAR AI tile logo, favicons and app icons | `client/public/assets/` | Assets: rebuild |
 | Tab title before load, install name "Private AI", scene-colored title bar | `client/index.html`, `client/vite.config.ts` | Build |
 | App shell: icon rail, toolbar band, floating sidebar and chat cards, model picker in the composer | `client/src` (UnifiedSidebar, Chat) and `packages/client` | Code: rebuild |

@@ -77,9 +77,9 @@ describe('reasoning header glyph and caret', () => {
     expect(caret).toHaveClass('rotate-180');
   });
 
-  /** A brand with its own process mark drops the lightbulb, slot and all (style.css), so the
-   *  glyph must sit in the slot that carries the marker. */
-  it('keeps the lightbulb in the slot a brand mark can drop', () => {
+  /** A brand with its own process mark drops the settled lightbulb, slot and all (style.css), so
+   *  the glyph must sit in the slot that carries the marker. */
+  it('keeps the settled lightbulb in the slot a brand mark can drop', () => {
     render(
       <ThinkingButton
         isExpanded={false}
@@ -92,6 +92,31 @@ describe('reasoning header glyph and caret', () => {
       .getByRole('button', { name: 'Thoughts' })
       .querySelector('.lucide-lightbulb');
     expect(bulb?.parentElement).toHaveClass('lc-reasoning-slot');
+    expect(
+      screen.getByRole('button', { name: 'Thoughts' }).querySelector('.lc-live-mark'),
+    ).toBeNull();
+  });
+
+  /** While the reasoning streams, the brand's mark leads the thought: the slot stays, and holds
+   *  the working mark beside the lightbulb it replaces (style.css picks one). */
+  it('carries the working mark in a kept slot while the reasoning streams', () => {
+    render(
+      <ThinkingButton
+        isExpanded={false}
+        onClick={() => {}}
+        label="Weighing contrast"
+        contentId="thoughts"
+        shimmerLabel
+      />,
+    );
+    const button = screen.getByRole('button', { name: 'Weighing contrast' });
+    const mark = button.querySelector('.lc-live-mark');
+    const bulb = button.querySelector('.lucide-lightbulb');
+
+    expect(mark).toHaveClass('lc-near-mark', 'is-working');
+    expect(mark?.parentElement).toBe(bulb?.parentElement);
+    expect(mark?.parentElement).not.toHaveClass('lc-reasoning-slot');
+    expect(bulb).toHaveClass('lc-live-glyph');
   });
 
   it('marks the non-interactive row the same way', () => {

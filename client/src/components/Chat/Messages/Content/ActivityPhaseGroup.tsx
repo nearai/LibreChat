@@ -46,6 +46,7 @@ import useTimeTick from '~/hooks/useTimeTick';
 import { getSourceDomains } from './sources';
 import { mapAttachments } from '~/utils/map';
 import SearchVerticals from './verticals';
+import { ProcessMark } from '../ui/Mark';
 
 /** Matches `EXPAND_TRANSITION` so the panel and the label ticker resolve on
  *  the same curve — two properties animating on two different easings is what
@@ -370,21 +371,17 @@ function LivePhaseHeader({
 
   return (
     <>
-      {/** A span that is only reasoning so far is the live thoughts row, so it drops its glyph
-       *  slot wherever the settled thoughts row does (`lc-reasoning-slot`). */}
-      <RailGlyph
-        hover={railHover}
-        className={iconNames.length === 0 ? 'lc-reasoning-slot' : undefined}
-      >
+      <RailGlyph hover={railHover}>
         {iconNames.length === 0 ? (
           /** A span that is only reasoning so far has no tool to show; it takes
-           *  the glyph the reasoning row itself uses. */
+           *  the glyph the reasoning row itself uses, or the brand's process mark. */
           <span
-            className={cn(ROW_GLYPH_SLOT, 'text-text-primary animate-pulse')}
+            className={cn(ROW_GLYPH_SLOT, 'text-text-primary')}
             aria-hidden="true"
             data-testid="live-phase-thinking"
           >
-            <Lightbulb size={14} />
+            <Lightbulb size={14} className="lc-live-glyph animate-pulse" />
+            <ProcessMark working className="lc-live-mark size-4" />
           </span>
         ) : (
           <span className={ROW_GLYPH_SLOT} aria-hidden="true">
@@ -781,6 +778,7 @@ export default function ActivityPhaseGroup({
     showCursor && thoughtPeek == null ? (
       <div className={TOOL_ROW_CLASSES} data-testid="activity-phase-cursor">
         <span className={cn(ROW_GLYPH_SLOT, 'submitting')} aria-hidden="true">
+          <ProcessMark working className="lc-live-mark size-4" />
           <span className="result-thinking block after:!static" />
         </span>
       </div>

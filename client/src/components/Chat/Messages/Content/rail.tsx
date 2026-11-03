@@ -48,18 +48,10 @@ export function useRailHover(): RailHover {
 
 /** The header's glyph, swapped for a collapse knob while the fold's rail is
  *  hovered, so the reader sees which fold the rail closes before clicking. */
-export function RailGlyph({
-  hover,
-  className,
-  children,
-}: {
-  hover: RailHover;
-  className?: string;
-  children: ReactNode;
-}) {
+export function RailGlyph({ hover, children }: { hover: RailHover; children: ReactNode }) {
   const hovered = useSyncExternalStore(hover.subscribe, hover.get, hover.get);
   return (
-    <span className={cn(ROW_GLYPH_SLOT, 'relative', className)} aria-hidden="true">
+    <span className={cn(ROW_GLYPH_SLOT, 'relative')} aria-hidden="true">
       <span className={cn('flex', hovered && 'invisible')}>{children}</span>
       {hovered && (
         <span

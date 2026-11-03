@@ -257,14 +257,15 @@ interface:
           tooltipShadow: '0 18px 36px rgb(2 3 10 / 0.6)'   # shadow-float
   customWelcome: 'Private AI for NEAR AI.'
   # The sidebar leads with the NEAR AI wordmark (logo kit Primary, white on dark and black on
-  # light) and the brand-blue "N" mark from the tile, in place of the app title. A reply shows
-  # Ironclaw's NEAR process indicator on its line until it completes.
+  # light) and the brand-blue "N" mark from the tile, in place of the app title. A reply in
+  # progress shows Ironclaw's NEAR process indicator beside its streaming thought and while it
+  # waits for output.
   brand:
     mark: '/assets/nearai-mark.svg'
     wordmark:
       light: '/assets/nearai-wordmark-black.svg'
       dark: '/assets/nearai-wordmark-white.svg'
-    indicator: 'near'     # a reply in progress carries the N, a light chasing its spine; thoughts rows drop their glyph
+    indicator: 'near'     # the N, a light chasing its spine, leads the live thought and replaces the waiting dot; settled thoughts carry no glyph
   messageAuthor: false    # replies carry no name-and-icon line; the thread reads as one voice
   modelSelect: true
   parameters: false

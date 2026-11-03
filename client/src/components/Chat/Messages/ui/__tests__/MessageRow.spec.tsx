@@ -18,7 +18,6 @@ const renderRow = ({
   systemLabel,
   showAuthor,
   outlined,
-  working,
 }: {
   isCreatedByUser: boolean;
   hasParallelContent?: boolean;
@@ -27,7 +26,6 @@ const renderRow = ({
   systemLabel?: string;
   showAuthor?: boolean;
   outlined?: boolean;
-  working?: boolean;
 }) =>
   render(
     <MessageRow
@@ -45,7 +43,6 @@ const renderRow = ({
       systemLabel={systemLabel}
       showAuthor={showAuthor}
       outlined={outlined}
-      working={working}
     >
       <p>{MESSAGE_BODY}</p>
     </MessageRow>,
@@ -237,23 +234,5 @@ describe('MessageRow', () => {
     expect(screen.getByRole('heading', { name: 'Message from You' })).not.toHaveAttribute(
       'data-author-header',
     );
-  });
-
-  /** The brand's process mark rides the reply line only while that reply is being produced;
-   *  style.css shows it for a brand that chooses it. */
-  it('carries the working process mark on a reply being produced', () => {
-    const { container } = renderRow({ isCreatedByUser: false, working: true });
-    const mark = container.querySelector('.lc-reply-mark');
-    expect(mark).toHaveClass('lc-near-mark', 'is-working', 'absolute');
-  });
-
-  it('drops the mark once the reply is complete', () => {
-    const { container } = renderRow({ isCreatedByUser: false, working: false });
-    expect(container.querySelector('.lc-reply-mark')).toBeNull();
-  });
-
-  it('never marks a user turn as working', () => {
-    const { container } = renderRow({ isCreatedByUser: true, working: true });
-    expect(container.querySelector('.lc-reply-mark')).toBeNull();
   });
 });
