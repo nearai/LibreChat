@@ -556,6 +556,26 @@ describe('verified fill defaults', () => {
   });
 });
 
+/** `status-proof` labels a passed attestation — the pill, the check rows and the
+ *  seal-match note — so it owes AA as text on its own fill and on the popover the
+ *  proof opens in. */
+describe.each([
+  ['default', defaultTheme],
+  ['dark', darkTheme],
+  ['high contrast light', highContrastLightTheme],
+  ['high contrast dark', highContrastDarkTheme],
+  ['clickhouse light', clickHouseLightTheme],
+  ['clickhouse dark', clickHouseDarkTheme],
+])('%s proof pair', (_name, theme: IThemeRGB) => {
+  it.each<keyof IThemeRGB>(['rgb-status-proof-subtle', 'rgb-surface-secondary'])(
+    'reads at AA on %s',
+    (surface) => {
+      const ratio = contrast(toRgb(theme, 'rgb-status-proof'), toRgb(theme, surface));
+      expect(ratio).toBeGreaterThanOrEqual(WCAG_AA_NORMAL);
+    },
+  );
+});
+
 /**
  * The default avatar's glyph is a graphical object under WCAG 1.4.11, so it needs 3:1 on its fill.
  * The bundled dark theme keeps the 2.6:1 its avatar painted before the role existed: the glyph is

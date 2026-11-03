@@ -131,7 +131,7 @@ const strandStrokes: Record<ProofTone, [string, string]> = {
 };
 
 const centerColors: Record<ProofTone, string> = {
-  positive: 'text-status-success',
+  positive: 'text-status-proof',
   caution: 'text-status-warning',
   critical: 'text-status-error',
   neutral: 'text-text-secondary',

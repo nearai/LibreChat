@@ -37,7 +37,7 @@ function isRecent(iso?: string): boolean {
 
 const tagTones: Record<TagState, string> = {
   signing: 'bg-status-neutral-subtle text-text-secondary',
-  verified: 'bg-status-success-subtle text-status-success',
+  verified: 'bg-status-proof-subtle text-status-proof',
   gateway: 'bg-status-warning-subtle text-status-warning',
   failed: 'bg-status-error-subtle text-status-error ring-1 ring-inset ring-status-error',
 };
@@ -56,7 +56,7 @@ const sealTones: Record<ReplyState, ProofTone> = {
 };
 
 const titleColors: Record<ReplyState, string> = {
-  verified: 'text-status-success',
+  verified: 'text-status-proof',
   gateway: 'text-status-warning',
   failed: 'text-status-error',
 };
@@ -359,7 +359,7 @@ function SealMatch({
     );
   }
   return (
-    <div className="bg-status-success-subtle text-status-success flex items-center gap-2 rounded-xl px-2.5 py-2">
+    <div className="bg-status-proof-subtle text-status-proof flex items-center gap-2 rounded-xl px-2.5 py-2">
       <SealBadge className="size-[18px]" />
       <p className="flex-1 text-xs leading-4">
         {code} {localize('com_ui_nearai_seal_matches_header')}

@@ -127,6 +127,8 @@ export const themeColorTokens = Object.freeze([
   'rgb-status-neutral-subtle',
   'rgb-status-neutral-border',
   'rgb-status-verified',
+  'rgb-status-proof',
+  'rgb-status-proof-subtle',
   'rgb-text-on-status',
   'rgb-brand-purple',
   'rgb-avatar-fill',

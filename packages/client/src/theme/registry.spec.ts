@@ -1748,6 +1748,59 @@ describe('theme registry', () => {
     expect(resolved.colors['rgb-status-verified']).toBe('26 127 216');
   });
 
+  it('moves the proof pair onto the success colors a theme painted', () => {
+    const resolved = resolveTheme(
+      {
+        version: 1,
+        name: 'success-proof-reference',
+        modes: { light: { colors: { 'rgb-status-success': '91 33 182' } } },
+      },
+      'light',
+    );
+
+    expect(resolved.colors['rgb-status-proof']).toBe('91 33 182');
+    expect(resolved.colors['rgb-status-proof-subtle']).toBe(
+      defaultTheme['rgb-status-success-subtle'],
+    );
+  });
+
+  it('keeps the bundled proof pair for a theme that leaves success alone', () => {
+    const resolved = resolveTheme(
+      {
+        version: 1,
+        name: 'unrelated-proof-reference',
+        modes: { dark: { colors: { 'rgb-text-primary': '250 250 250' } } },
+      },
+      'dark',
+    );
+
+    expect(resolved.colors['rgb-status-proof']).toBe(darkTheme['rgb-status-proof']);
+    expect(resolved.colors['rgb-status-proof-subtle']).toBe(darkTheme['rgb-status-proof-subtle']);
+  });
+
+  it('preserves an explicit proof pair beside custom success colors', () => {
+    const resolved = resolveTheme(
+      {
+        version: 1,
+        name: 'explicit-proof-reference',
+        modes: {
+          dark: {
+            colors: {
+              'rgb-status-success': '200 180 255',
+              'rgb-status-success-subtle': '40 20 70',
+              'rgb-status-proof': '133 201 161',
+              'rgb-status-proof-subtle': '24 49 36',
+            },
+          },
+        },
+      },
+      'dark',
+    );
+
+    expect(resolved.colors['rgb-status-proof']).toBe('133 201 161');
+    expect(resolved.colors['rgb-status-proof-subtle']).toBe('24 49 36');
+  });
+
   it('resolves provider brand tokens and lets a theme override them', () => {
     const defaults = resolveTheme(libreChatTheme, 'light');
     expect(defaults.brands['provider-anthropic']).toBe('#d09a74');

@@ -34,7 +34,7 @@ const PULSE_MS = 2400;
 
 const pillTones: Record<DeploymentState, string> = {
   checking: 'bg-status-neutral-subtle text-text-secondary',
-  verified: 'bg-status-success-subtle text-status-success',
+  verified: 'bg-status-proof-subtle text-status-proof',
   failed: 'bg-status-error-subtle text-status-error ring-1 ring-inset ring-status-error',
   unavailable: 'bg-status-neutral-subtle text-text-secondary',
 };
@@ -62,7 +62,7 @@ const sealCenters = {
 
 const titleColors: Record<DeploymentState, string> = {
   checking: 'text-text-primary',
-  verified: 'text-status-success',
+  verified: 'text-status-proof',
   failed: 'text-status-error',
   unavailable: 'text-text-primary',
 };

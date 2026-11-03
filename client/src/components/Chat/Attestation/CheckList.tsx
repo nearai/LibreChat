@@ -12,7 +12,7 @@ export type CheckRow = {
 };
 
 const dotClasses: Record<CheckState, string> = {
-  done: 'bg-status-success-subtle text-status-success',
+  done: 'bg-status-proof-subtle text-status-proof',
   active: 'text-text-secondary',
   fail: 'bg-status-error-subtle text-status-error ring-1 ring-inset ring-status-error',
   warn: 'bg-status-warning-subtle text-status-warning',

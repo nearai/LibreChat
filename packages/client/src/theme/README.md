@@ -335,6 +335,8 @@ Each status family has a foreground, a `-subtle` background, a `-border`, and a
 - `text-status-verified` — fill of the verified mark `VerifiedIcon` paints,
   carrying a `stroke-text-on-status` check. See `rgb-status-verified` in
   `types/index.ts` for why it is its own role and what a pre-token theme gets.
+- `text-status-proof` / `bg-status-proof-subtle` — an attestation proof that
+  passed. See `rgb-status-proof` in `types/index.ts`.
 
 ### Other Colors
 

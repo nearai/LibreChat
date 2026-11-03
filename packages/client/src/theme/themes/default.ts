@@ -134,6 +134,8 @@ export const defaultTheme: IThemeRGB = {
    *  point: one blue for "this is informational/first-party", 5.17:1 under the
    *  white label and 4.83:1 against the panel. */
   'rgb-status-verified': '37 99 235', // #2563eb (blue-600)
+  'rgb-status-proof': '26 107 72', // #1a6b48
+  'rgb-status-proof-subtle': '210 241 223', // #d2f1df
   'rgb-text-on-status': '255 255 255', // #fff (white)
 
   // Brand colors
