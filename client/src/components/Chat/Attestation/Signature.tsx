@@ -3,13 +3,20 @@ import { useSetAtom } from 'jotai';
 import * as Ariakit from '@ariakit/react';
 import { buttonVariants } from '@librechat/client';
 import { ArrowUpRight, ChevronRight, X } from 'lucide-react';
-import type { TMessage, TNearAIReceipt } from 'librechat-data-provider';
+import type { TMessage, TNearAIReceipt, TNearAIAttestationResponse } from 'librechat-data-provider';
 import type { GlyphState, ProofTone } from './Seal';
 import type { CheckRow } from './CheckList';
 import type { ReplyState } from './proof';
-import { formatCheckedAt, getReceipts, replyChecks, replySealKey, replyState } from './proof';
+import {
+  sameKey,
+  replyState,
+  getReceipts,
+  replyChecks,
+  replySealKey,
+  formatCheckedAt,
+} from './proof';
 import { useNearAIAttestationQuery } from '~/data-provider/Misc/queries';
-import { proofPulseAtom, useLatestModelKey } from './state';
+import { proofPulseAtom, useHeaderSealKey } from './state';
 import { ProofGlyph, SealBadge, SealMark } from './Seal';
 import { receiptVerifyLink } from './links';
 import { sealCode } from './geometry';
@@ -182,7 +189,7 @@ function Signature({
             message={message}
             receipts={receipts}
             conversationModel={conversation.model ?? ''}
-            verifyUrl={attestation?.enabled === true ? attestation.verifyUrl : undefined}
+            attestation={attestation}
           />
         </Ariakit.Popover>
       )}
@@ -195,23 +202,26 @@ function ReplyDetails({
   message,
   receipts,
   conversationModel,
-  verifyUrl,
+  attestation,
 }: {
   state: ReplyState;
   message: TMessage;
   receipts: TNearAIReceipt[];
   conversationModel: string;
-  verifyUrl?: string;
+  /** The deployment answer for this reply's endpoint and model. */
+  attestation?: TNearAIAttestationResponse;
 }) {
   const localize = useLocalize();
   const setPulse = useSetAtom(proofPulseAtom);
   const model = receipts[0]?.model ?? '';
   const key = replySealKey(receipts);
   /** The header seal is drawn for the conversation's model; another model's reply has no match. */
-  const headerKey = useLatestModelKey(
+  const headerKey = useHeaderSealKey(
     model === conversationModel ? message.conversationId : null,
     model,
+    attestation,
   );
+  const verifyUrl = attestation?.enabled === true ? attestation.verifyUrl : undefined;
   const when = formatCheckedAt(receipts[0]?.verifiedAt);
   const link = verifyUrl
     ? receipts.map((receipt) => receiptVerifyLink(verifyUrl, receipt)).find(Boolean)
@@ -302,7 +312,7 @@ function ReplyDetails({
       {state === 'verified' && key && headerKey && (
         <SealMatch
           sealKey={key}
-          matches={headerKey === key}
+          matches={sameKey(headerKey, key)}
           onShow={() => setPulse((n) => n + 1)}
         />
       )}

@@ -6,18 +6,19 @@ import { Button, buttonVariants } from '@librechat/client';
 import { dataService, QueryKeys } from 'librechat-data-provider';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { TNearAIAttestationResponse } from 'librechat-data-provider';
-import type { DeploymentCheck, DeploymentState } from './proof';
+import type { DeploymentCheck, DeploymentReport, DeploymentState } from './proof';
 import type { GlyphState, ProofTone } from './Seal';
 import type { CheckRow } from './CheckList';
 import {
   DEPLOYMENT_CHECKS,
-  deploymentChecks,
+  isCheckFailure,
   deploymentState,
-  failedCheck,
   formatCheckedAt,
+  deploymentChecks,
+  failedDeploymentCheck,
 } from './proof';
 import { useNearAIAttestationQuery } from '~/data-provider/Misc/queries';
-import { proofPulseAtom, useLatestModelKey } from './state';
+import { proofPulseAtom, useHeaderSealKey } from './state';
 import { ProofGlyph, SealBadge, SealMark } from './Seal';
 import { useChatContext } from '~/Providers';
 import { modelVerifyLink } from './links';
@@ -114,7 +115,7 @@ function Shield() {
     mutationFn: () => dataService.getNearAIAttestation({ ...params, refresh: true }),
     onSuccess: (result: TNearAIAttestationResponse) => queryClient.setQueryData(queryKey, result),
   });
-  const sealKey = useLatestModelKey(conversation?.conversationId, params.model);
+  const sealKey = useHeaderSealKey(conversation?.conversationId, params.model, data);
 
   const attestation = data?.enabled === true ? data : undefined;
   const state = deploymentState({
@@ -171,7 +172,7 @@ function Shield() {
   const collapsed = state === 'verified' && settled && !hovered && !focused && !open;
   const code = sealKey ? sealCode(sealKey) : undefined;
   const word = localize(words[state]);
-  const failed = state === 'failed' ? failedCheck(attestation?.errorCode) : undefined;
+  const failed = state === 'failed' ? failedDeploymentCheck(attestation) : undefined;
   const ariaLabel =
     state === 'verified' && code
       ? localize('com_ui_nearai_proof_aria_seal', { 0: word, 1: code })
@@ -256,12 +257,15 @@ function Shield() {
         </div>
 
         <p className="text-sm leading-5">
-          <DeploymentBody state={state} model={params.model} knownFailure={failed != null} />
+          <DeploymentBody
+            state={state}
+            model={params.model}
+            errorCode={attestation?.errorCode}
+            blamedCheck={failed != null}
+          />
         </p>
 
-        {state !== 'unavailable' && (
-          <DeploymentChecks state={state} errorCode={attestation?.errorCode} />
-        )}
+        {state !== 'unavailable' && <DeploymentChecks state={state} report={attestation} />}
 
         {state === 'verified' && (
           <div className="flex min-h-5 items-center gap-2">
@@ -344,11 +348,14 @@ function CheckedLabel({ state, checkedAt }: { state: DeploymentState; checkedAt?
 function DeploymentBody({
   state,
   model,
-  knownFailure,
+  errorCode,
+  blamedCheck,
 }: {
   state: DeploymentState;
   model: string;
-  knownFailure: boolean;
+  errorCode?: string;
+  /** A check row shows the failure code, so the body need not repeat it. */
+  blamedCheck: boolean;
 }) {
   const localize = useLocalize();
   if (state === 'checking') {
@@ -357,24 +364,33 @@ function DeploymentBody({
   if (state === 'verified') {
     return <>{localize('com_ui_nearai_deploy_verified_body', { 0: model })}</>;
   }
+  if (state === 'failed' && blamedCheck) {
+    return <>{localize('com_ui_nearai_deploy_failed_body', { 0: model })}</>;
+  }
+  if (state === 'failed' && isCheckFailure(errorCode)) {
+    return <>{localize('com_ui_nearai_deploy_failed_code_body', { 0: model, 1: errorCode })}</>;
+  }
   if (state === 'failed') {
-    return (
-      <>
-        {knownFailure
-          ? localize('com_ui_nearai_deploy_failed_body', { 0: model })
-          : localize('com_ui_nearai_deploy_failed_unknown_body', { 0: model })}
-      </>
-    );
+    return <>{localize('com_ui_nearai_deploy_failed_unknown_body', { 0: model })}</>;
   }
   return <>{localize('com_ui_nearai_deploy_unavailable_body')}</>;
 }
 
-function DeploymentChecks({ state, errorCode }: { state: DeploymentState; errorCode?: string }) {
+function DeploymentChecks({
+  state,
+  report,
+}: {
+  state: DeploymentState;
+  report?: DeploymentReport;
+}) {
   const localize = useLocalize();
-  const states = deploymentChecks(state, errorCode);
+  const states = deploymentChecks(state, report);
   const caption = (check: DeploymentCheck) => {
     if (states[check] === 'fail') {
-      return localize('com_ui_nearai_check_fail_caption', { 0: errorCode ?? '' });
+      return localize('com_ui_nearai_check_fail_caption', { 0: report?.errorCode ?? '' });
+    }
+    if (states[check] === 'warn') {
+      return localize('com_ui_nearai_check_not_provided');
     }
     if (states[check] === 'skip') {
       return localize('com_ui_nearai_check_unconfirmed');

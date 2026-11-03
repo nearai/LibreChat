@@ -111,7 +111,113 @@ describe('Shield', () => {
     expect(screen.getByText('Same seal on every signed reply')).toBeVisible();
   });
 
-  it('names the check that failed and pauses sending', async () => {
+  it("draws the verified session's seal before the model signs a reply", async () => {
+    getAttestation.mockResolvedValueOnce({
+      ...verified,
+      checks: { gateway: 'passed', cpu: 'passed', gpu: 'passed', key: 'passed' },
+      signingKey: { signingAlgo: 'ed25519', signingAddress: KEY },
+    });
+    renderShield([]);
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'NEAR AI proof: Verified, seal 5A02·CAFF' }),
+    );
+    expect(await screen.findByText('Seal 5A02·CAFF')).toBeVisible();
+    expect(
+      screen.queryByText('The seal appears once the model signs a reply.'),
+    ).not.toBeInTheDocument();
+  });
+
+  it("prefers the session's key to an older reply's", async () => {
+    const replyKey = 'ab'.repeat(32);
+    getAttestation.mockResolvedValueOnce({
+      ...verified,
+      signingKey: { signingAlgo: 'ed25519', signingAddress: KEY },
+    });
+    renderShield([
+      {
+        messageId: 'm-1',
+        conversationId: 'c-1',
+        parentMessageId: null,
+        isCreatedByUser: false,
+        text: 'hi',
+        metadata: {
+          nearai: {
+            receipts: [
+              {
+                completionId: 'chatcmpl-1',
+                model: MODEL,
+                status: 'verified' as const,
+                verifiedAt: new Date().toISOString(),
+                signatureKind: 'provider_tee' as const,
+                signingAddress: replyKey,
+              },
+            ],
+          },
+        },
+      } as TMessage,
+    ]);
+
+    expect(
+      await screen.findByRole('button', { name: 'NEAR AI proof: Verified, seal 5A02·CAFF' }),
+    ).toBeVisible();
+  });
+
+  it('flags a GPU check that had no evidence to examine', async () => {
+    getAttestation.mockResolvedValueOnce({
+      ...verified,
+      checks: { gateway: 'passed', cpu: 'passed', gpu: 'not_provided', key: 'passed' },
+    });
+    renderShield();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'NEAR AI proof: Verified' }));
+    const dialog = await screen.findByRole('dialog');
+    const gpu = within(dialog).getByText('GPU · NVIDIA').closest('li') as HTMLElement;
+    expect(within(gpu).getByText('No evidence was sent, so this is not proven')).toBeVisible();
+    expect(within(gpu).getByText(': needs attention')).toBeInTheDocument();
+    expect(within(dialog).getByText('Quote is valid and firmware is up to date')).toBeVisible();
+  });
+
+  it("fails the check the server names, whatever the code's area", async () => {
+    getAttestation.mockResolvedValueOnce({
+      ...verified,
+      status: 'failed',
+      errorCode: 'quote.verification_failed',
+      checks: { gateway: 'failed', cpu: 'not_checked', gpu: 'not_checked', key: 'not_checked' },
+    });
+    renderShield();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'NEAR AI proof: Check failed' }));
+    const dialog = await screen.findByRole('dialog');
+    const gateway = within(dialog).getByText('NEAR AI Gateway').closest('li') as HTMLElement;
+    expect(within(gateway).getByText('Did not pass: quote.verification_failed')).toBeVisible();
+    expect(within(dialog).getAllByText('Not confirmed')).toHaveLength(3);
+  });
+
+  it('gives the code in the body when no single check can be blamed', async () => {
+    getAttestation.mockResolvedValueOnce({
+      ...verified,
+      status: 'failed',
+      errorCode: 'policy.tcb_status_not_allowed',
+      checks: {
+        gateway: 'not_checked',
+        cpu: 'not_checked',
+        gpu: 'not_checked',
+        key: 'not_checked',
+      },
+    });
+    renderShield();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'NEAR AI proof: Check failed' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(
+      within(dialog).getByText(/did not pass: policy\.tcb_status_not_allowed\./),
+    ).toBeVisible();
+    expect(within(dialog).getAllByText('Not confirmed')).toHaveLength(4);
+    expect(within(dialog).queryByText(/^Did not pass:/)).not.toBeInTheDocument();
+  });
+
+  it('names the check a failure code points to on servers without per-check outcomes', async () => {
     getAttestation.mockResolvedValueOnce({
       ...verified,
       status: 'failed',

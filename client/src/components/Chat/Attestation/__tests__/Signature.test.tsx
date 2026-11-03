@@ -94,6 +94,38 @@ describe('Signature', () => {
     expect(link.getAttribute('href')).toMatch(/#receipt=/);
   });
 
+  it('compares the reply with the session key the header draws', async () => {
+    getAttestation.mockResolvedValue({
+      enabled: true,
+      model: MODEL,
+      status: 'verified',
+      checkedAt: new Date().toISOString(),
+      signingKey: { signingAlgo: 'ed25519', signingAddress: 'ab'.repeat(32) },
+    });
+    renderSignature(reply([receipt()]));
+
+    fireEvent.click(screen.getByRole('button', { name: 'NEAR AI reply proof: Verified' }));
+    expect(
+      await screen.findByText("differs from the seal in this chat's header", { exact: false }),
+    ).toBeVisible();
+  });
+
+  it('matches the session key however its hex is spelled', async () => {
+    getAttestation.mockResolvedValue({
+      enabled: true,
+      model: MODEL,
+      status: 'verified',
+      checkedAt: new Date().toISOString(),
+      signingKey: { signingAlgo: 'ed25519', signingAddress: `0x${KEY.toUpperCase()}` },
+    });
+    renderSignature(reply([receipt()]));
+
+    fireEvent.click(screen.getByRole('button', { name: 'NEAR AI reply proof: Verified' }));
+    expect(
+      await screen.findByText("matches the seal in this chat's header.", { exact: false }),
+    ).toBeVisible();
+  });
+
   it('rings the header seal on request', async () => {
     renderSignature(reply([receipt()]));
 

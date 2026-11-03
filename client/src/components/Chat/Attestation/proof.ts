@@ -1,4 +1,10 @@
-import type { TMessage, TNearAIAttestationResponse, TNearAIReceipt } from 'librechat-data-provider';
+import type {
+  TMessage,
+  TNearAIReceipt,
+  TNearAICheckOutcome,
+  TNearAIAttestationResponse,
+} from 'librechat-data-provider';
+import { normalizeKey } from './geometry';
 
 /** The checks behind a deployment proof, in the order the popover lists them. */
 export const DEPLOYMENT_CHECKS = ['gateway', 'cpu', 'gpu', 'key'] as const;
@@ -15,6 +21,20 @@ export type DeploymentState = 'checking' | 'verified' | 'failed' | 'unavailable'
 /** `gateway`: the signature is valid, but the Gateway signed it rather than the model. */
 export type ReplyState = 'verified' | 'gateway' | 'failed';
 
+/** What the server said about the checks. Servers that predate `checks` send only the code. */
+export type DeploymentReport = {
+  errorCode?: string;
+  checks?: Partial<Record<DeploymentCheck, TNearAICheckOutcome>>;
+};
+
+/** `not_provided` needs attention: the deployment passed without that evidence. */
+const outcomeStates: Record<TNearAICheckOutcome, CheckState> = {
+  passed: 'done',
+  failed: 'fail',
+  not_provided: 'warn',
+  not_checked: 'skip',
+};
+
 const GATEWAY_CODES = new Set([
   'binding.spki_fingerprint_required',
   'binding.spki_fingerprint_mismatch',
@@ -23,9 +43,10 @@ const CPU_CODES = new Set(['policy.debug_enabled', 'policy.tcb_status_not_allowe
 const KEY_AREAS = new Set(['binding', 'measurement', 'provenance', 'e2ee', 'input']);
 
 /**
- * The check an inference SDK failure code belongs to. The Gateway and the model are
- * verified in parallel and the first failure ends the run, so only that check is known
- * to have failed. `api.*` codes mean the evidence never arrived, so no check is blamed.
+ * The check an inference SDK failure code belongs to, for servers that do not report
+ * `checks`. The Gateway and the model are verified in parallel and the first failure ends
+ * the run, so only that check is known to have failed. `api.*` codes mean the evidence
+ * never arrived, so no check is blamed.
  */
 export function failedCheck(code?: string): DeploymentCheck | undefined {
   if (!code) {
@@ -69,21 +90,40 @@ export function deploymentState({
   return 'unavailable';
 }
 
+/** The check that failed: the one the server marks, else the one the failure code names. */
+export function failedDeploymentCheck(report?: DeploymentReport): DeploymentCheck | undefined {
+  if (report?.checks) {
+    return DEPLOYMENT_CHECKS.find((check) => report.checks?.[check] === 'failed');
+  }
+  return failedCheck(report?.errorCode);
+}
+
+/** Whether checks ran and one did not pass, as opposed to evidence that never arrived. */
+export function isCheckFailure(code?: string): boolean {
+  return !!code && code !== 'unknown' && !code.startsWith('api.');
+}
+
 /**
  * Row states for the deployment checks. While checking, every row is in flight at once,
- * which is how the SDK runs them; on failure only the check the code names is marked.
+ * which is how the SDK runs them. Once answered, each row takes the server's outcome; on
+ * servers without `checks`, a failure marks only the check its code names.
  */
 export function deploymentChecks(
   state: DeploymentState,
-  errorCode?: string,
+  report: DeploymentReport = {},
 ): Record<DeploymentCheck, CheckState> {
-  const failed = state === 'failed' ? failedCheck(errorCode) : undefined;
+  const { checks } = report;
+  const failed = state === 'failed' && !checks ? failedCheck(report.errorCode) : undefined;
   const rowState = (check: DeploymentCheck): CheckState => {
-    if (state === 'verified') {
-      return 'done';
-    }
     if (state === 'checking') {
       return 'active';
+    }
+    if (checks) {
+      const outcome = checks[check];
+      return (outcome && outcomeStates[outcome]) ?? 'skip';
+    }
+    if (state === 'verified') {
+      return 'done';
     }
     return check === failed ? 'fail' : 'skip';
   };
@@ -134,6 +174,19 @@ export function replyChecks(state: ReplyState): Record<ReplyCheck, CheckState> {
     return { signature: 'fail', signer: 'skip', model: 'skip' };
   }
   return { signature: 'done', signer: state === 'gateway' ? 'warn' : 'done', model: 'done' };
+}
+
+/** The verified session's model key, which signs the model's next replies. */
+export function sessionKey(data?: TNearAIAttestationResponse): string | undefined {
+  if (data?.enabled !== true || data.status !== 'verified') {
+    return undefined;
+  }
+  return data.signingKey?.signingAddress;
+}
+
+/** Whether two keys are the same, however each spells its hex. */
+export function sameKey(a: string, b: string): boolean {
+  return normalizeKey(a) === normalizeKey(b);
 }
 
 /** The key a reply's seal is drawn from: the first verified signer among its receipts. */

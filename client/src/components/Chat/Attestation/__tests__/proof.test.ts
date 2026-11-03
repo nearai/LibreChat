@@ -1,13 +1,18 @@
 import type { TMessage, TNearAIReceipt } from 'librechat-data-provider';
+import type { DeploymentReport } from '../proof';
 import {
-  deploymentChecks,
-  deploymentState,
+  sameKey,
+  sessionKey,
+  replyState,
   failedCheck,
-  formatCheckedAt,
-  latestModelKey,
   replyChecks,
   replySealKey,
-  replyState,
+  isCheckFailure,
+  latestModelKey,
+  deploymentState,
+  formatCheckedAt,
+  deploymentChecks,
+  failedDeploymentCheck,
 } from '../proof';
 
 const receipt = (overrides: Partial<TNearAIReceipt> = {}): TNearAIReceipt => ({
@@ -90,6 +95,13 @@ describe('deploymentState', () => {
 });
 
 describe('deploymentChecks', () => {
+  const notChecked = {
+    gateway: 'not_checked',
+    cpu: 'not_checked',
+    gpu: 'not_checked',
+    key: 'not_checked',
+  } as const;
+
   it('runs every check at once, the way the SDK does', () => {
     expect(Object.values(deploymentChecks('checking'))).toEqual([
       'active',
@@ -99,17 +111,136 @@ describe('deploymentChecks', () => {
     ]);
   });
 
-  it('marks only the failed check and leaves the rest unconfirmed', () => {
-    expect(deploymentChecks('failed', 'gpu.attestation_rejected')).toEqual({
-      gateway: 'skip',
-      cpu: 'skip',
-      gpu: 'fail',
-      key: 'skip',
+  it('keeps every check in flight while re-checking over an earlier answer', () => {
+    const report: DeploymentReport = { checks: { ...notChecked, gpu: 'failed' } };
+    expect(Object.values(deploymentChecks('checking', report))).toEqual(Array(4).fill('active'));
+  });
+
+  describe("with the server's per-check outcomes", () => {
+    it('flags GPU evidence that was never sent on a verified deployment', () => {
+      const report: DeploymentReport = {
+        checks: { gateway: 'passed', cpu: 'passed', gpu: 'not_provided', key: 'passed' },
+      };
+      expect(deploymentChecks('verified', report)).toEqual({
+        gateway: 'done',
+        cpu: 'done',
+        gpu: 'warn',
+        key: 'done',
+      });
+    });
+
+    it('marks the check the server names, not the one the code suggests', () => {
+      const report: DeploymentReport = {
+        errorCode: 'quote.verification_failed',
+        checks: { ...notChecked, gateway: 'failed' },
+      };
+      expect(deploymentChecks('failed', report)).toEqual({
+        gateway: 'fail',
+        cpu: 'skip',
+        gpu: 'skip',
+        key: 'skip',
+      });
+    });
+
+    it('blames nothing when the server could not tell whose evidence failed', () => {
+      const report: DeploymentReport = {
+        errorCode: 'policy.tcb_status_not_allowed',
+        checks: notChecked,
+      };
+      expect(Object.values(deploymentChecks('failed', report))).toEqual(Array(4).fill('skip'));
+    });
+
+    it('leaves an outcome it does not know unconfirmed', () => {
+      const report = {
+        checks: { gateway: 'passed', cpu: 'passed', gpu: 'attested_later', key: 'passed' },
+      } as unknown as DeploymentReport;
+      expect(deploymentChecks('verified', report).gpu).toBe('skip');
     });
   });
 
-  it('blames nothing for an unattributable failure', () => {
-    expect(Object.values(deploymentChecks('failed', 'api.http_status'))).not.toContain('fail');
+  describe('on servers that predate per-check outcomes', () => {
+    it('passes every check when verified', () => {
+      expect(Object.values(deploymentChecks('verified'))).toEqual(Array(4).fill('done'));
+    });
+
+    it('marks only the failed check and leaves the rest unconfirmed', () => {
+      expect(deploymentChecks('failed', { errorCode: 'gpu.attestation_rejected' })).toEqual({
+        gateway: 'skip',
+        cpu: 'skip',
+        gpu: 'fail',
+        key: 'skip',
+      });
+    });
+
+    it('blames nothing for an unattributable failure', () => {
+      const states = deploymentChecks('failed', { errorCode: 'api.http_status' });
+      expect(Object.values(states)).not.toContain('fail');
+    });
+  });
+});
+
+describe('failedDeploymentCheck', () => {
+  it("takes the server's failed check over the code's area", () => {
+    const report: DeploymentReport = {
+      errorCode: 'quote.verification_failed',
+      checks: { gateway: 'failed', cpu: 'not_checked', gpu: 'not_checked', key: 'not_checked' },
+    };
+    expect(failedDeploymentCheck(report)).toBe('gateway');
+  });
+
+  it('names none when the server blames none', () => {
+    const report: DeploymentReport = {
+      errorCode: 'quote.verification_failed',
+      checks: {
+        gateway: 'not_checked',
+        cpu: 'not_checked',
+        gpu: 'not_checked',
+        key: 'not_checked',
+      },
+    };
+    expect(failedDeploymentCheck(report)).toBeUndefined();
+  });
+
+  it("falls back to the code's area without server checks", () => {
+    expect(failedDeploymentCheck({ errorCode: 'quote.verification_failed' })).toBe('cpu');
+    expect(failedDeploymentCheck(undefined)).toBeUndefined();
+  });
+});
+
+describe('isCheckFailure', () => {
+  it('tells a check that did not pass from evidence that never arrived', () => {
+    expect(isCheckFailure('policy.tcb_status_not_allowed')).toBe(true);
+    expect(isCheckFailure('api.transport_failed')).toBe(false);
+    expect(isCheckFailure('unknown')).toBe(false);
+    expect(isCheckFailure(undefined)).toBe(false);
+  });
+});
+
+describe('sessionKey', () => {
+  const verified = {
+    enabled: true as const,
+    model: 'm',
+    status: 'verified' as const,
+    checkedAt: '2026-11-02T22:00:00.000Z',
+    signingKey: { signingAlgo: 'ed25519' as const, signingAddress: 'cc'.repeat(32) },
+  };
+
+  it("is the verified session's model key", () => {
+    expect(sessionKey(verified)).toBe('cc'.repeat(32));
+  });
+
+  it('is absent unless the deployment is verified and the server reports a key', () => {
+    expect(sessionKey({ ...verified, status: 'failed' })).toBeUndefined();
+    expect(sessionKey({ ...verified, signingKey: undefined })).toBeUndefined();
+    expect(sessionKey({ enabled: false })).toBeUndefined();
+    expect(sessionKey(undefined)).toBeUndefined();
+  });
+});
+
+describe('sameKey', () => {
+  it('ignores case and a 0x prefix', () => {
+    expect(sameKey(`0x${'AB'.repeat(32)}`, 'ab'.repeat(32))).toBe(true);
+    expect(sameKey('ab'.repeat(32), 'ac'.repeat(32))).toBe(false);
   });
 });
 
