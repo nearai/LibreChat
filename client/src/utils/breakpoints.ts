@@ -2,6 +2,15 @@
 export const DRAWER_MAX_WIDTH = 768;
 
 /**
+ * Viewport width, in baseline pixels, at or below which the screen is phone-sized: the composer
+ * folds into one row and the model picker moves into the header. Just under Tailwind's `sm`
+ * (40rem), where the welcome screen also seats the composer at the foot of the screen. Between
+ * this and `DRAWER_MAX_WIDTH` navigation is already a drawer, but the composer keeps its full
+ * two rows with the picker inside it.
+ */
+export const PHONE_MAX_WIDTH = 639;
+
+/**
  * Below this artifacts render as a fixed sheet rather than a resizable panel. Every
  * layout owner reads this one value: `Artifacts` positions itself, while its two hosts
  * decide whether to reserve a panel for it, so a threshold they did not share left the

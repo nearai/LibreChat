@@ -76,6 +76,15 @@ dark mode, and `defaultAppearanceFor(mode)` returns the full set for a mode: the
 theme that names a role in one mode replaces that mode's default only, and a theme that names
 `shadowLg` but not `menuShadow` keeps shading its light menus with `shadowLg`.
 
+`greetingGlow` (`--theme-greeting-glow`) is the welcome screen's ambient light. It takes one
+concrete CSS color with its alpha, such as `rgb(0 145 253 / 0.4)`, and `tokens.css` exposes it as
+the `greeting-glow` color. The welcome screen paints it as two blurred radial washes centered on
+the composer's top edge (`bg-radial from-greeting-glow`): a wide, soft halo and a tight, bright
+core. Each is an ellipse, so the light arches, tallest at the center and easing out by the
+composer's corners. A window as wide as the composer clips them at the edge, so the light leaks
+from behind the composer and rises behind the greeting without reaching below it. The default is
+`transparent`, so a theme that does not set it draws no glow.
+
 The bundled ClickHouse theme (`themes/clickhouse.ts`) is the reference for a theme that changes
 shape as well as color: it tightens the radius scale to Click UI's `border.radii` steps, sets the
 mono family to Inconsolata over a real fallback stack, and raises every surface with Click UI's

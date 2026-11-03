@@ -8,12 +8,8 @@ import Landing from '../Landing';
 let mockConversation: Record<string, unknown> | null = null;
 let mockAgentsMap: Record<string, any> | undefined;
 let mockAssistantMap: Record<string, any> | undefined;
-
-jest.mock('@react-spring/web', () => ({
-  easings: {
-    easeOutCubic: jest.fn(),
-  },
-}));
+let mockInterface: Record<string, unknown> = {};
+let mockUser: { name: string } | undefined;
 
 jest.mock('librechat-data-provider', () => ({
   EModelEndpoint: {
@@ -25,7 +21,6 @@ jest.mock('librechat-data-provider', () => ({
 jest.mock('@librechat/client', () => ({
   BirthdayIcon: () => <span data-testid="birthday-icon" />,
   TooltipAnchor: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
-  SplitText: ({ text }: { text: string }) => <span>{text}</span>,
   useRemScale: () => 1,
 }));
 
@@ -36,12 +31,12 @@ jest.mock('~/Providers', () => ({
 }));
 
 jest.mock('~/data-provider', () => ({
-  useGetStartupConfig: () => ({ data: { interface: {} } }),
+  useGetStartupConfig: () => ({ data: { interface: mockInterface } }),
   useGetEndpointsQuery: () => ({ data: {} }),
 }));
 
 jest.mock('~/hooks', () => ({
-  useAuthContext: () => ({ user: undefined }),
+  useAuthContext: () => ({ user: mockUser }),
   useGreeting: () => 'Welcome',
   useLocalize: () => (key: string) => {
     const translations: Record<string, string> = {
@@ -96,6 +91,11 @@ function renderLanding({ isTemporary = false }: { isTemporary?: boolean } = {}) 
     </RecoilRoot>,
   );
 }
+
+beforeEach(() => {
+  mockInterface = {};
+  mockUser = undefined;
+});
 
 describe('Landing agent contact', () => {
   beforeEach(() => {
@@ -232,5 +232,67 @@ describe('Landing temporary chat empty state', () => {
     expect(screen.queryByText('Temporary Chat')).not.toBeInTheDocument();
     /** A plain greeting is the screen's one headline; the icon introduces a named entity. */
     expect(screen.queryByTestId('convo-icon')).not.toBeInTheDocument();
+  });
+});
+
+describe('Landing greeting', () => {
+  beforeEach(() => {
+    mockConversation = null;
+    mockAgentsMap = undefined;
+    mockAssistantMap = undefined;
+  });
+
+  /** The greeting used to rise letter by letter; it now enters as one line, and only when
+   *  motion is allowed. */
+  it('fades the greeting up as one line', () => {
+    mockInterface = { customWelcome: 'Welcome to Near AI private Chat' };
+
+    renderLanding();
+
+    const headline = screen.getByText('Welcome to Near AI private Chat');
+    expect(headline.tagName).toBe('P');
+    expect(headline).toHaveClass('animate-greeting-rise', 'motion-reduce:animate-none');
+  });
+
+  it('sets the configured subtitle under the greeting, filling in the user name', () => {
+    mockUser = { name: 'Ada' };
+    mockInterface = {
+      customWelcome: 'Welcome, {{user.name}}',
+      customWelcomeSubtitle: "What's on your mind, {{user.name}}?",
+    };
+
+    renderLanding();
+
+    const headline = screen.getByText('Welcome, Ada');
+    const subtitle = screen.getByText("What's on your mind, Ada?");
+    expect(headline.compareDocumentPosition(subtitle) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(subtitle).toHaveClass('text-text-secondary', 'animate-greeting-rise-late');
+  });
+
+  it('shows no subtitle unless one is configured', () => {
+    mockInterface = { customWelcome: 'Hello' };
+
+    const { container } = renderLanding();
+
+    expect(container.querySelectorAll('p')).toHaveLength(1);
+  });
+
+  it('leaves the subtitle out of a temporary chat, whose explanation takes its place', () => {
+    mockInterface = { customWelcomeSubtitle: "What's on your mind?" };
+
+    renderLanding({ isTemporary: true });
+
+    expect(screen.queryByText("What's on your mind?")).not.toBeInTheDocument();
+  });
+
+  it('fades an agent name up the same way', () => {
+    mockConversation = { endpoint: 'agents', agent_id: 'agent-1' };
+    mockAgentsMap = { 'agent-1': { id: 'agent-1', name: 'Portal Remote Agent' } };
+
+    renderLanding();
+
+    expect(screen.getByText('Portal Remote Agent')).toHaveClass('animate-greeting-rise');
   });
 });

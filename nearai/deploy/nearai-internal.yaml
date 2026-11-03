@@ -144,6 +144,7 @@ interface:
           motionNormal: '220ms'                     # duration-standard
           menuShadow: '0 14px 30px rgb(0 0 0 / 0.12)'      # shadow-float
           tooltipShadow: '0 14px 30px rgb(0 0 0 / 0.12)'   # shadow-float
+          greetingGlow: 'rgb(0 145 253 / 0.24)'             # brand blue #0091FD, a faint wash on the light pane
       dark:
         colors:
           # Grounds
@@ -255,7 +256,11 @@ interface:
           <<: *nearaiAppearance
           menuShadow: '0 18px 36px rgb(2 3 10 / 0.6)'      # shadow-float
           tooltipShadow: '0 18px 36px rgb(2 3 10 / 0.6)'   # shadow-float
-  customWelcome: 'Private AI for NEAR AI.'
+          greetingGlow: 'rgb(0 145 253 / 0.55)'             # brand blue #0091FD, an ambient bloom on the dark pane
+  # The welcome greeting fades up into place over a brand-blue light leaking from behind the
+  # composer's top edge (the theme's greetingGlow).
+  customWelcome: 'Welcome to Near AI private Chat'
+  customWelcomeSubtitle: "What's on your mind?"
   # The sidebar leads with the NEAR AI wordmark (logo kit Primary, white on dark and black on
   # light) and the brand-blue "N" mark from the tile, in place of the app title. A reply in
   # progress shows Ironclaw's NEAR process indicator beside its streaming thought and while it

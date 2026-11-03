@@ -54,6 +54,41 @@ function LoadingSpinner() {
   );
 }
 
+/** A radial wash centered on the composer's top edge: an ellipse, so the light arches, tallest at
+ *  the center and easing down to nothing at its own sides and top. */
+const glowLayerClassName =
+  'absolute bottom-0 translate-y-1/2 bg-radial to-transparent to-70% blur-lg';
+
+/**
+ * The welcome screen's light: it leaks from behind the composer's top edge and rises behind the
+ * greeting, in the theme's `greetingGlow` (transparent by default). A zero-height anchor sits on
+ * that edge, and above it a window as wide as the composer, clipped at the edge, holds the light,
+ * so none of it reaches below or beside the composer at any width. A wide, soft halo carries the
+ * light upward; a tight core keeps the edge itself brightest. Each layer stays inset from the
+ * window's sides by more than its blur reaches (`blur-lg` spreads about 3rem), so the window never
+ * cuts a lit edge, and takes its height from its width, so the arch keeps its proportions from a
+ * phone to a desktop.
+ */
+function ComposerGlow() {
+  return (
+    <div
+      aria-hidden="true"
+      data-testid="composer-glow"
+      className="relative h-0 w-full max-w-3xl xl:max-w-4xl"
+    >
+      <div className="animate-greeting-glow pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-72 overflow-hidden motion-reduce:animate-none">
+        <span
+          className={cn(
+            glowLayerClassName,
+            'from-greeting-glow/70 via-greeting-glow/40 inset-x-12 aspect-5/2 via-45%',
+          )}
+        />
+        <span className={cn(glowLayerClassName, 'from-greeting-glow inset-x-1/8 aspect-7/1')} />
+      </div>
+    </div>
+  );
+}
+
 function ChatView({
   index = 0,
   project,
@@ -243,7 +278,7 @@ function ChatView({
                                together, so it holds the same band back here. Without
                                it the composer lands 4px right of where a conversation
                                puts it and slides sideways on the way in. */
-                                'scrollbar-gutter-spacer flex-1 items-center justify-end sm:justify-center'
+                                'scrollbar-gutter-spacer isolate flex-1 items-center justify-end sm:justify-center'
                               : 'h-full overflow-y-auto',
                             !isLandingPage && chatProjectId && 'pt-9',
                           )}
@@ -255,17 +290,23 @@ function ChatView({
                           >
                             {content}
                           </OwnerTextProvider>
+                          {/* `isolate` above keeps the glow over the pane it lights and under the
+                              greeting and the composer. */}
+                          {isLandingPage && <ComposerGlow />}
                           {/* Named + opaque so a view transition (the ask_user_question
                         popover ⇄ chat-card morph) paints the whole composer band
                         over the travelling card instead of letting it show
                         through below the composer. The background matches the
-                        page, so normal rendering is unchanged. The named surface
-                        is a stacking context; keep it above positioned tool glyphs
-                        so they cannot paint through the approval preview. */}
+                        page, so normal rendering is unchanged. The welcome screen
+                        has no card to cover, and an opaque band there would cut
+                        the light behind the composer into a rectangle, so it
+                        stays clear. The named surface is a stacking context;
+                        keep it above positioned tool glyphs so they cannot paint
+                        through the approval preview. */}
                           <div
                             className={cn(
-                              'bg-surface-canvas relative z-10 w-full [view-transition-name:chat-form]',
-                              !isLandingPage && 'scrollbar-gutter-spacer',
+                              'relative z-10 w-full [view-transition-name:chat-form]',
+                              !isLandingPage && 'bg-surface-canvas scrollbar-gutter-spacer',
                               isLandingPage && 'max-w-3xl transition-all duration-200 xl:max-w-4xl',
                             )}
                           >

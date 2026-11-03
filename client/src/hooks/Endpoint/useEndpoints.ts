@@ -22,6 +22,7 @@ import type { Endpoint } from '~/common';
 import { useHasAccess, useShowMarketplace } from '~/hooks';
 import { resolveProviderIcon } from './useProviderIcon';
 import { useGetEndpointsQuery } from '~/data-provider';
+import CustomIcon from '~/components/ui/CustomIcon';
 import { mapEndpoints } from '~/utils';
 
 const defaultInterface = getConfigDefaults().interface;
@@ -42,8 +43,10 @@ const createEndpointIcon = (
     return React.createElement(Sparkles, { className: artClassName });
   }
 
+  /** A one-ink SVG takes the text color, as it does in the chat list and on messages, so a dark
+   *  mark stays visible on a dark control; any other image is drawn as it is. */
   if (imageURL != null) {
-    return React.createElement('img', {
+    return React.createElement(CustomIcon, {
       src: imageURL,
       alt: `${endpoint} Icon`,
       className: artClassName,

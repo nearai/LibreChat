@@ -11,6 +11,7 @@ import {
 import { OpenSidebar, PresetsMenu, NewChat, HeaderMenu } from './Menus';
 import { TemporaryChat, TemporaryChatIndicator } from './TemporaryChat';
 import useDrawerViewport from '~/hooks/Nav/useDrawerViewport';
+import usePhoneViewport from '~/hooks/Nav/usePhoneViewport';
 import ModelSelector from './Menus/Endpoints/ModelSelector';
 import { BackgroundTasksButton } from './BackgroundTasks';
 import { TraceButton, useTraceControl } from './Trace';
@@ -42,6 +43,7 @@ function Header({
   const navVisible = useRecoilValue(store.sidebarExpanded);
   const isSubmitting = useRecoilValue(store.isSubmittingFamily(0));
   const isSmallScreen = useDrawerViewport();
+  const isPhone = usePhoneViewport();
 
   /** The mobile row only offers a new chat when there is one to leave. Read
    *  from the route rather than the context conversation, which still holds the
@@ -112,7 +114,8 @@ function Header({
         {parentConversationId != null && (
           <SubagentThreadLink threadId={parentConversationId} labelClassName="hidden lg:inline" />
         )}
-        {!readOnly && isSmallScreen && <ModelSelector startupConfig={startupConfig} />}
+        {/* On phones the picker rides here; from tablet width up it sits in the composer. */}
+        {!readOnly && isPhone && <ModelSelector startupConfig={startupConfig} />}
         {!isSmallScreen && title && (
           <span className="text-text-primary min-w-0 truncate text-sm font-medium">{title}</span>
         )}

@@ -59,8 +59,8 @@ import usePastedTextEdit from '~/hooks/Files/usePastedTextEdit';
 import useAskAnswerMode from '~/hooks/Input/useAskAnswerMode';
 import AskUserQuestionPopover from './AskUserQuestionPopover';
 import useComposerItems from '~/hooks/Input/useComposerItems';
-import useDrawerViewport from '~/hooks/Nav/useDrawerViewport';
 import ModelSelector from '../Menus/Endpoints/ModelSelector';
+import usePhoneViewport from '~/hooks/Nav/usePhoneViewport';
 import useAttachTarget from '~/hooks/Input/useAttachTarget';
 import Hints, { composerHintId } from './Composer/Hints';
 import PastedTextDialog from './Files/PastedTextDialog';
@@ -225,8 +225,8 @@ const ChatForm = memo(function ChatForm({
   } = useAddedChatContext();
   const assistantMap = useAssistantsMapContext();
   const { data: startupConfig } = useGetStartupConfig();
-  /** The header carries the model picker on small screens; the composer carries it on desktop. */
-  const isSmallScreen = useDrawerViewport();
+  /** The header carries the model picker on phones; the composer carries it from tablet width up. */
+  const isPhone = usePhoneViewport();
 
   const endpoint = useMemo(
     () => conversation?.endpointType ?? conversation?.endpoint,
@@ -1060,7 +1060,7 @@ const ChatForm = memo(function ChatForm({
                     !draftWrapped && files.size === 0 && composerItems.length === 0 && !addedConvo
                   }
                   modelSlot={
-                    isSmallScreen ? undefined : (
+                    isPhone ? undefined : (
                       <ModelSelector startupConfig={startupConfig} variant="composer" />
                     )
                   }

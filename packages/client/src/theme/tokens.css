@@ -184,6 +184,10 @@
   --color-status-neutral-border: rgb(var(--status-neutral-border));
   --color-status-verified: rgb(var(--status-verified));
 
+  /* The welcome screen's light, rising from the composer: a whole color, alpha included, from
+     the `greetingGlow` appearance role, so a theme that sets none paints nothing. */
+  --color-greeting-glow: var(--theme-greeting-glow, transparent);
+
   /* data series */
   --color-series-1: rgb(var(--series-1));
   --color-series-2: rgb(var(--series-2));

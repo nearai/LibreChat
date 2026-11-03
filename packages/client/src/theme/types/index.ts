@@ -723,6 +723,12 @@ export interface IThemeAppearance {
    *  and the light menu shadow follows `shadowLg` when a theme names only that. */
   menuShadow: string;
   tooltipShadow: string;
+  /**
+   * The welcome screen's ambient light: a CSS color, alpha included, blurred along the composer's
+   * top edge so it leaks from behind the composer and rises behind the greeting. `transparent`,
+   * the default, draws none.
+   */
+  greetingGlow: string;
   motionFast: string;
   motionNormal: string;
   /**

@@ -6,7 +6,7 @@ NEAR AI's own instance, "Private AI for NEAR AI". The general deploy steps and a
 
 | What | Where | Kind |
 |---|---|---|
-| Near AI OS theme (light and dark), welcome text, Google sign-in restricted to `near.ai` | `nearai/deploy/nearai-internal.yaml` | Config: restart to apply |
+| Near AI OS theme (light and dark), welcome title and subtitle, the brand-blue light leaking from behind the composer's top edge (`greetingGlow`), Google sign-in restricted to `near.ai` | `nearai/deploy/nearai-internal.yaml` | Config: restart to apply |
 | Sidebar brand (N mark and "near ai" wordmark); NEAR's process mark beside a streaming thought and in place of the waiting dot (settled thoughts carry no glyph); replies without an author line; a chat bubble around the N, in the row's icon color, on chat rows | `interface.brand`, `interface.messageAuthor` and the endpoint's `iconURL` in the same file; marks in `client/public/assets/nearai-*.svg` | Config and assets |
 | NEAR AI tile logo, favicons and app icons | `client/public/assets/` | Assets: rebuild |
 | Tab title before load, install name "Private AI", scene-colored title bar | `client/index.html`, `client/vite.config.ts` | Build |

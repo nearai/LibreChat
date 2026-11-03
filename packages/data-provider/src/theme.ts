@@ -309,6 +309,12 @@ function splitTopLevel(value: string, separator: RegExp): string[] {
 const isShadowColor = (token: string): boolean =>
   globalThis.CSS?.supports?.('color', token) ?? shadowColorPattern.test(token);
 
+/** One concrete color, held to the same check as a shadow's: no `var()`, `env()` or `attr()`. */
+const isGlowColor = (value: unknown): value is string =>
+  typeof value === 'string' &&
+  !/[;{}]|url\s*\(|(var|env|attr)\s*\(/i.test(value) &&
+  isShadowColor(value.trim());
+
 /** One layer: two to four lengths, optionally `inset` and one color, per the box-shadow grammar. */
 function isShadowLayer(layer: string): boolean {
   const tokens = splitTopLevel(layer, /\s/).filter((token) => token.length > 0);
@@ -488,6 +494,8 @@ const appearanceValidators = {
   /** The menu panel's and the tooltip's shadows, `none` included. */
   menuShadow: isShadow,
   tooltipShadow: isShadow,
+  /** The welcome screen's light rising from the composer, alpha included; `transparent` draws none. */
+  greetingGlow: isGlowColor,
   motionFast: isDuration,
   motionNormal: isDuration,
   /** How much of `border-light` the outlines of controls and chips, and the hairlines inside a

@@ -2647,6 +2647,8 @@ export const interfaceSchema = z
       .optional(),
     termsOfService: termsOfServiceSchema.optional(),
     customWelcome: z.string().optional(),
+    /** A line set under the landing greeting, with `{{user.name}}` filled in like `customWelcome`. */
+    customWelcomeSubtitle: z.string().optional(),
     /** The marks the sidebar shows in place of the app title: an optional mark beside a wordmark
      *  drawn per color mode. Each is an image path or URL the client loads. `indicator` picks what
      *  a reply in progress shows while it waits and beside a streaming thought: LibreChat's
