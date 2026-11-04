@@ -159,23 +159,21 @@ const requestsTo = (fetchSpy: jest.SpyInstance, url: string) =>
   fetchSpy.mock.calls.filter(([input]) => new Request(input as RequestInfo).url === url).length;
 
 describe('verifyNearAIModel', () => {
-  it('reports every check passed and the attested key when NVIDIA accepts GPU evidence', async () => {
-    const key = ed25519Key();
-    const fetchSpy = mockHttp({ models: [{ key, gpu: true }] });
+  it("reports every check passed and Intel's status when NVIDIA accepts GPU evidence", async () => {
+    const fetchSpy = mockHttp({ models: [{ key: ed25519Key(), gpu: true }] });
 
     const status = await verifyNearAIModel(credentials(), MODEL);
 
     expect(status).toMatchObject({
       status: 'verified',
       checks: { gateway: 'passed', cpu: 'passed', gpu: 'passed', key: 'passed' },
-      signingKey: { signingAlgo: 'ed25519', signingAddress: key },
+      tcbStatus: 'UpToDate',
     });
     expect(requestsTo(fetchSpy, NRAS_URL)).toBe(1);
   });
 
   it('reports GPU evidence as not provided when the model TEE supplied none', async () => {
-    const key = ed25519Key();
-    const fetchSpy = mockHttp({ models: [{ key }] });
+    const fetchSpy = mockHttp({ models: [{ key: ed25519Key() }] });
 
     const status = await verifyNearAIModel(credentials(), MODEL);
 
@@ -186,7 +184,6 @@ describe('verifyNearAIModel', () => {
       gpu: 'not_provided',
       key: 'passed',
     });
-    expect(status.signingKey?.signingAddress).toBe(key);
     expect(requestsTo(fetchSpy, NRAS_URL)).toBe(0);
   });
 
@@ -199,9 +196,37 @@ describe('verifyNearAIModel', () => {
     expect(status.checks?.gpu).toBe('not_provided');
   });
 
+  it("reports the status Intel gave the model's quote, even when the policy accepts it", async () => {
+    mockHttp({ models: [{ key: ed25519Key(), tcbStatus: 'OutOfDate' }] });
+
+    const status = await verifyNearAIModel(credentials(), MODEL);
+
+    expect(status.status).toBe('verified');
+    expect(status.tcbStatus).toBe('OutOfDate');
+  });
+
+  it("reports no status when the model's quotes disagree", async () => {
+    mockHttp({
+      models: [
+        { key: ed25519Key(), tcbStatus: 'UpToDate' },
+        { key: ed25519Key(), tcbStatus: 'OutOfDate' },
+      ],
+    });
+
+    const status = await verifyNearAIModel(credentials(), MODEL);
+
+    expect(status.status).toBe('verified');
+    expect(status.tcbStatus).toBeUndefined();
+  });
+
+  it('never reports a signing key, which the proof UI does not use', async () => {
+    mockHttp({ models: [{ key: ed25519Key(), gpu: true }] });
+
+    expect(await verifyNearAIModel(credentials(), MODEL)).not.toHaveProperty('signingKey');
+  });
+
   it('keeps the session facts on cached verifications without fetching evidence again', async () => {
-    const key = ed25519Key();
-    const fetchSpy = mockHttp({ models: [{ key, gpu: true }] });
+    const fetchSpy = mockHttp({ models: [{ key: ed25519Key(), gpu: true }] });
     const connection = credentials();
 
     const first = await verifyNearAIModel(connection, MODEL);
@@ -210,7 +235,7 @@ describe('verifyNearAIModel', () => {
 
     expect(fetchSpy.mock.calls.length).toBe(callsAfterFirst);
     expect(second.checks).toEqual(first.checks);
-    expect(second.signingKey).toEqual({ signingAlgo: 'ed25519', signingAddress: key });
+    expect(second.tcbStatus).toBe('UpToDate');
   });
 
   it('marks the GPU check failed when NVIDIA rejects the evidence', async () => {
@@ -225,7 +250,7 @@ describe('verifyNearAIModel', () => {
       gpu: 'failed',
       key: 'not_checked',
     });
-    expect(status.signingKey).toBeUndefined();
+    expect(status.tcbStatus).toBeUndefined();
   });
 
   it('marks the key check failed when the model has no attestation', async () => {
@@ -255,16 +280,16 @@ describe('verifyNearAIModel', () => {
     expect(Object.values(status.checks ?? {})).toEqual(Array(4).fill('not_checked'));
   });
 
-  it('drops the key of a session that failed to re-verify', async () => {
+  it('drops the status of a session that failed to re-verify', async () => {
     const connection = credentials();
     mockHttp({ models: [{ key: ed25519Key() }] });
-    expect((await verifyNearAIModel(connection, MODEL)).signingKey).toBeDefined();
+    expect((await verifyNearAIModel(connection, MODEL)).tcbStatus).toBeDefined();
 
     mockHttp({ models: [{ key: ed25519Key() }], gatewayStatus: 503 });
     const status = await verifyNearAIModel(connection, MODEL, true);
 
     expect(status.status).toBe('failed');
-    expect(status.signingKey).toBeUndefined();
+    expect(status.tcbStatus).toBeUndefined();
   });
 });
 

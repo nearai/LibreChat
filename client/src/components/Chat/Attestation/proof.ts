@@ -4,27 +4,33 @@ import type {
   TNearAICheckOutcome,
   TNearAIAttestationResponse,
 } from 'librechat-data-provider';
-import { normalizeKey } from './geometry';
 
 /** The checks behind a deployment proof, in the order the popover lists them. */
 export const DEPLOYMENT_CHECKS = ['gateway', 'cpu', 'gpu', 'key'] as const;
 export type DeploymentCheck = (typeof DEPLOYMENT_CHECKS)[number];
 
-/** The checks behind one reply's proof. */
-export const REPLY_CHECKS = ['signature', 'signer', 'model'] as const;
-export type ReplyCheck = (typeof REPLY_CHECKS)[number];
-
 export type CheckState = 'done' | 'active' | 'fail' | 'warn' | 'skip';
 
 export type DeploymentState = 'checking' | 'verified' | 'failed' | 'unavailable';
 
-/** `gateway`: the signature is valid, but the Gateway signed it rather than the model. */
-export type ReplyState = 'verified' | 'gateway' | 'failed';
+/**
+ * What a reply's receipts establish, read from the captured signature and never from how
+ * the call was made.
+ * `gateway`: the signature is valid, but the Gateway signed it rather than the model.
+ * `edited`: the shown text was changed in this app after signing.
+ * `unclassified`: a signature exists, but its receipt doesn't say which kind of key made it.
+ * `unsigned`: no signature was available to check.
+ */
+export type ReplyState = 'verified' | 'gateway' | 'edited' | 'unclassified' | 'unsigned' | 'failed';
+
+/** Which kind of key signed a reply, as far as its receipts say. */
+export type SignerKind = 'model' | 'gateway' | 'unclassified';
 
 /** What the server said about the checks. Servers that predate `checks` send only the code. */
 export type DeploymentReport = {
   errorCode?: string;
   checks?: Partial<Record<DeploymentCheck, TNearAICheckOutcome>>;
+  tcbStatus?: string;
 };
 
 /** `not_provided` needs attention: the deployment passed without that evidence. */
@@ -106,7 +112,8 @@ export function isCheckFailure(code?: string): boolean {
 /**
  * Row states for the deployment checks. While checking, every row is in flight at once,
  * which is how the SDK runs them. Once answered, each row takes the server's outcome; on
- * servers without `checks`, a failure marks only the check its code names.
+ * servers without `checks`, a failure marks only the check its code names, and a pass
+ * leaves GPU unconfirmed, since the SDK passes a model that sent no GPU evidence.
  */
 export function deploymentChecks(
   state: DeploymentState,
@@ -123,7 +130,7 @@ export function deploymentChecks(
       return (outcome && outcomeStates[outcome]) ?? 'skip';
     }
     if (state === 'verified') {
-      return 'done';
+      return check === 'gpu' ? 'skip' : 'done';
     }
     return check === failed ? 'fail' : 'skip';
   };
@@ -159,69 +166,51 @@ export function getReceipts(message: TMessage): TNearAIReceipt[] {
   return Array.isArray(nearai?.receipts) ? nearai.receipts : [];
 }
 
-export function replyState(receipts: TNearAIReceipt[]): ReplyState {
-  if (receipts.some((receipt) => receipt.status !== 'verified')) {
+/** The SDK's codes for a reply with no signature to check, rather than one that failed. */
+const NO_SIGNATURE_CODES = new Set([
+  'api.completion_not_found',
+  'api.completion_signature_unavailable',
+]);
+
+/** Which kind of key signed these receipts; the weakest signer speaks for the reply. */
+export function signerKind(receipts: TNearAIReceipt[]): SignerKind {
+  const kinds = receipts.map((receipt) => receipt.signatureKind);
+  if (kinds.some((kind) => kind !== 'provider_tee' && kind !== 'gateway')) {
+    return 'unclassified';
+  }
+  return kinds.includes('gateway') ? 'gateway' : 'model';
+}
+
+export function replyState(receipts: TNearAIReceipt[], edited = false): ReplyState {
+  const notVerified = receipts.filter((receipt) => receipt.status !== 'verified');
+  if (notVerified.some((receipt) => !NO_SIGNATURE_CODES.has(receipt.errorCode ?? ''))) {
     return 'failed';
   }
-  if (receipts.some((receipt) => receipt.signatureKind !== 'provider_tee')) {
-    return 'gateway';
+  if (notVerified.length > 0) {
+    return 'unsigned';
   }
-  return 'verified';
-}
-
-export function replyChecks(state: ReplyState): Record<ReplyCheck, CheckState> {
-  if (state === 'failed') {
-    return { signature: 'fail', signer: 'skip', model: 'skip' };
+  if (edited) {
+    return 'edited';
   }
-  return { signature: 'done', signer: state === 'gateway' ? 'warn' : 'done', model: 'done' };
+  const kind = signerKind(receipts);
+  return kind === 'model' ? 'verified' : kind;
 }
 
-/** The verified session's model key, which signs the model's next replies. */
-export function sessionKey(data?: TNearAIAttestationResponse): string | undefined {
-  if (data?.enabled !== true || data.status !== 'verified') {
-    return undefined;
-  }
-  return data.signingKey?.signingAddress;
+/** A reply's text and reasoning parts; other user-submitted paths are tool input and steers. */
+const REPLY_TEXT_PATH = /^\/(text|content\/\d+\/(text|think))$/;
+
+/** Whether someone changed this reply's text in the app, which the server records per path. */
+export function isReplyEdited(message: TMessage): boolean {
+  return message.userSubmittedPaths?.some((path) => REPLY_TEXT_PATH.test(path)) ?? false;
 }
 
-/** Whether two keys are the same, however each spells its hex. */
-export function sameKey(a: string, b: string): boolean {
-  return normalizeKey(a) === normalizeKey(b);
-}
-
-/** The key a reply's seal is drawn from: the first verified signer among its receipts. */
-export function replySealKey(receipts: TNearAIReceipt[]): string | undefined {
-  return receipts.find((receipt) => receipt.status === 'verified' && receipt.signingAddress)
-    ?.signingAddress;
-}
+export type SignedHashes = { request: string; response: string };
 
 /**
- * The model key behind the latest reply `model` signed in this conversation. The header
- * draws its seal from it, so every reply signed by that key wears the same seal. Scans
- * from the end, where the newest reply is, and stops at the first match.
+ * The request and response hashes in a signature's text, which reads
+ * `<model>:<request>:<response>` from the model and `<request>:<response>` from the Gateway.
  */
-export function latestModelKey(
-  messages: TMessage[] | undefined,
-  model: string,
-): string | undefined {
-  if (!messages || !model) {
-    return undefined;
-  }
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const message = messages[i];
-    if (message.isCreatedByUser || message.metadata?.nearai == null) {
-      continue;
-    }
-    const receipt = getReceipts(message).find(
-      (entry) =>
-        entry.model === model &&
-        entry.status === 'verified' &&
-        entry.signatureKind === 'provider_tee' &&
-        entry.signingAddress,
-    );
-    if (receipt) {
-      return receipt.signingAddress;
-    }
-  }
-  return undefined;
+export function signedHashes(signedText?: string): SignedHashes | undefined {
+  const match = /(?:^|:)([0-9a-f]{64}):([0-9a-f]{64})$/i.exec(signedText ?? '');
+  return match ? { request: match[1], response: match[2] } : undefined;
 }

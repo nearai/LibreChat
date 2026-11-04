@@ -85,18 +85,13 @@ module.exports = {
           '0%': { left: '-40%', opacity: '1' },
           '100%': { left: '130%', opacity: '1' },
         },
-        /** Rings the header proof button so a reply's seal can be found there. */
-        'proof-pulse': {
-          '0%': { boxShadow: '0 0 0 0 rgb(var(--status-success-strong) / 0.7)' },
-          '100%': { boxShadow: '0 0 0 10px rgb(var(--status-success-strong) / 0)' },
-        },
         'proof-row': {
           from: { opacity: '0', transform: 'translateY(4px)' },
           to: { opacity: '1', transform: 'none' },
         },
       },
       transitionTimingFunction: {
-        /** A short overshoot for marks that land: the seal, its badge, a collapsing pill. */
+        /** A short overshoot for marks that land: the seal and its badge. */
         'proof-spring':
           'linear(0, 0.154, 0.458, 0.748, 0.952, 1.06, 1.094, 1.084, 1.056, 1.028, 1.007, 0.995, 0.991, 0.992, 0.994, 0.997, 1)',
       },
@@ -117,7 +112,6 @@ module.exports = {
         'proof-stamp':
           'proof-stamp 420ms linear(0, 0.154, 0.458, 0.748, 0.952, 1.06, 1.094, 1.084, 1.056, 1.028, 1.007, 0.995, 0.991, 0.992, 0.994, 0.997, 1) both',
         'proof-shine': 'proof-shine 900ms 250ms cubic-bezier(0.2, 0.8, 0.2, 1) both',
-        'proof-pulse': 'proof-pulse 1100ms cubic-bezier(0.2, 0.8, 0.2, 1) 2',
         'proof-row': 'proof-row 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both',
       },
     },

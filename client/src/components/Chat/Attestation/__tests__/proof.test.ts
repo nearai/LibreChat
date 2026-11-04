@@ -1,14 +1,12 @@
 import type { TMessage, TNearAIReceipt } from 'librechat-data-provider';
 import type { DeploymentReport } from '../proof';
 import {
-  sameKey,
-  sessionKey,
   replyState,
+  signerKind,
   failedCheck,
-  replyChecks,
-  replySealKey,
+  signedHashes,
+  isReplyEdited,
   isCheckFailure,
-  latestModelKey,
   deploymentState,
   formatCheckedAt,
   deploymentChecks,
@@ -25,16 +23,6 @@ const receipt = (overrides: Partial<TNearAIReceipt> = {}): TNearAIReceipt => ({
   signingAddress: 'aa'.repeat(32),
   ...overrides,
 });
-
-const reply = (receipts: TNearAIReceipt[], overrides: Partial<TMessage> = {}): TMessage =>
-  ({
-    messageId: `m-${Math.random()}`,
-    conversationId: 'c-1',
-    isCreatedByUser: false,
-    text: 'reply',
-    metadata: { nearai: { receipts } },
-    ...overrides,
-  }) as TMessage;
 
 describe('failedCheck', () => {
   it.each([
@@ -159,8 +147,13 @@ describe('deploymentChecks', () => {
   });
 
   describe('on servers that predate per-check outcomes', () => {
-    it('passes every check when verified', () => {
-      expect(Object.values(deploymentChecks('verified'))).toEqual(Array(4).fill('done'));
+    it('passes every check when verified, except GPU, which a pass does not establish', () => {
+      expect(deploymentChecks('verified')).toEqual({
+        gateway: 'done',
+        cpu: 'done',
+        gpu: 'skip',
+        key: 'done',
+      });
     });
 
     it('marks only the failed check and leaves the rest unconfirmed', () => {
@@ -216,83 +209,112 @@ describe('isCheckFailure', () => {
   });
 });
 
-describe('sessionKey', () => {
-  const verified = {
-    enabled: true as const,
-    model: 'm',
-    status: 'verified' as const,
-    checkedAt: '2026-11-02T22:00:00.000Z',
-    signingKey: { signingAlgo: 'ed25519' as const, signingAddress: 'cc'.repeat(32) },
-  };
-
-  it("is the verified session's model key", () => {
-    expect(sessionKey(verified)).toBe('cc'.repeat(32));
-  });
-
-  it('is absent unless the deployment is verified and the server reports a key', () => {
-    expect(sessionKey({ ...verified, status: 'failed' })).toBeUndefined();
-    expect(sessionKey({ ...verified, signingKey: undefined })).toBeUndefined();
-    expect(sessionKey({ enabled: false })).toBeUndefined();
-    expect(sessionKey(undefined)).toBeUndefined();
-  });
-});
-
-describe('sameKey', () => {
-  it('ignores case and a 0x prefix', () => {
-    expect(sameKey(`0x${'AB'.repeat(32)}`, 'ab'.repeat(32))).toBe(true);
-    expect(sameKey('ab'.repeat(32), 'ac'.repeat(32))).toBe(false);
-  });
-});
-
 describe('reply proof', () => {
   it('is verified when the model signed every completion', () => {
     expect(replyState([receipt(), receipt({ completionId: 'chatcmpl-2' })])).toBe('verified');
   });
 
   it('warns when the Gateway signed instead of the model', () => {
-    const receipts = [receipt(), receipt({ signatureKind: 'gateway' })];
-    expect(replyState(receipts)).toBe('gateway');
-    expect(replyChecks('gateway').signer).toBe('warn');
+    expect(replyState([receipt(), receipt({ signatureKind: 'gateway' })])).toBe('gateway');
   });
 
-  it('fails when any signature failed, and runs nothing after it', () => {
+  it('does not take a missing or unknown signature kind for the Gateway', () => {
+    expect(replyState([receipt({ signatureKind: undefined })])).toBe('unclassified');
+    expect(
+      replyState([receipt({ signatureKind: 'other' as TNearAIReceipt['signatureKind'] })]),
+    ).toBe('unclassified');
+  });
+
+  it('fails when any signature failed', () => {
     const receipts = [receipt(), receipt({ status: 'failed', errorCode: 'signature.invalid' })];
     expect(replyState(receipts)).toBe('failed');
-    expect(replyChecks('failed')).toEqual({ signature: 'fail', signer: 'skip', model: 'skip' });
   });
 
-  it('draws the seal from the first verified signer', () => {
-    const receipts = [
-      receipt({ status: 'failed', signingAddress: undefined }),
-      receipt({ signingAddress: 'bb'.repeat(32) }),
-    ];
-    expect(replySealKey(receipts)).toBe('bb'.repeat(32));
+  it('fails on an error it cannot read as a missing signature', () => {
+    for (const errorCode of ['api.transport_failed', 'unknown', undefined]) {
+      expect(replyState([receipt({ status: 'failed', errorCode })])).toBe('failed');
+    }
+  });
+
+  it('is unsigned when no signature was available', () => {
+    for (const errorCode of ['api.completion_signature_unavailable', 'api.completion_not_found']) {
+      expect(replyState([receipt({ status: 'failed', errorCode })])).toBe('unsigned');
+    }
+  });
+
+  it('lets a real failure outrank a missing signature', () => {
+    expect(
+      replyState([
+        receipt({ status: 'failed', errorCode: 'api.completion_not_found' }),
+        receipt({ status: 'failed', errorCode: 'signature.payload_mismatch' }),
+      ]),
+    ).toBe('failed');
+  });
+
+  it('is edited once the text changes, unless the signature itself did not stand', () => {
+    expect(replyState([receipt()], true)).toBe('edited');
+    expect(replyState([receipt({ signatureKind: 'gateway' })], true)).toBe('edited');
+    expect(replyState([receipt({ status: 'failed', errorCode: 'signature.invalid' })], true)).toBe(
+      'failed',
+    );
+    expect(
+      replyState([receipt({ status: 'failed', errorCode: 'api.completion_not_found' })], true),
+    ).toBe('unsigned');
   });
 });
 
-describe('latestModelKey', () => {
-  it('takes the newest model-signed reply for the model', () => {
-    const messages = [
-      reply([receipt({ signingAddress: 'old' })]),
-      { messageId: 'u', isCreatedByUser: true, text: 'hi' } as TMessage,
-      reply([receipt({ signingAddress: 'new' })]),
-    ];
-    expect(latestModelKey(messages, 'z-ai/glm-5.3-flash')).toBe('new');
+describe('signerKind', () => {
+  it('lets the weakest signer speak for the reply', () => {
+    expect(signerKind([receipt()])).toBe('model');
+    expect(signerKind([receipt(), receipt({ signatureKind: 'gateway' })])).toBe('gateway');
+    expect(
+      signerKind([receipt({ signatureKind: 'gateway' }), receipt({ signatureKind: undefined })]),
+    ).toBe('unclassified');
+  });
+});
+
+describe('isReplyEdited', () => {
+  const message = (userSubmittedPaths?: string[]) => ({ userSubmittedPaths }) as TMessage;
+
+  it('sees edits to the text and to text or reasoning parts', () => {
+    expect(isReplyEdited(message(['/text']))).toBe(true);
+    expect(isReplyEdited(message(['/content/0/text']))).toBe(true);
+    expect(isReplyEdited(message(['/content/12/think']))).toBe(true);
   });
 
-  it('skips Gateway signatures, failures and other models', () => {
-    const messages = [
-      reply([receipt({ signingAddress: 'model-key' })]),
-      reply([receipt({ signatureKind: 'gateway', signingAddress: 'gateway-key' })]),
-      reply([receipt({ status: 'failed', signingAddress: 'failed-key' })]),
-      reply([receipt({ model: 'other/model', signingAddress: 'other-key' })]),
-    ];
-    expect(latestModelKey(messages, 'z-ai/glm-5.3-flash')).toBe('model-key');
+  it('ignores tool input and steers the user added during the run', () => {
+    expect(isReplyEdited(message(['/content/3']))).toBe(false);
+    expect(isReplyEdited(message(['/content/3/tool_call/args']))).toBe(false);
+    expect(isReplyEdited(message(['/content/3/tool_call/output']))).toBe(false);
   });
 
-  it('has no key before the model signs a reply', () => {
-    expect(latestModelKey([], 'z-ai/glm-5.3-flash')).toBeUndefined();
-    expect(latestModelKey(undefined, 'z-ai/glm-5.3-flash')).toBeUndefined();
+  it('is false for a reply nobody touched', () => {
+    expect(isReplyEdited(message())).toBe(false);
+    expect(isReplyEdited(message([]))).toBe(false);
+  });
+});
+
+describe('signedHashes', () => {
+  const request = 'a'.repeat(64);
+  const response = 'B'.repeat(64);
+
+  it("reads the Gateway's text", () => {
+    expect(signedHashes(`${request}:${response}`)).toEqual({ request, response });
+  });
+
+  it("reads the model's text, whose name may itself hold a colon", () => {
+    expect(signedHashes(`z-ai/glm-5.3-flash:${request}:${response}`)).toEqual({
+      request,
+      response,
+    });
+    expect(signedHashes(`org/model:free:${request}:${response}`)).toEqual({ request, response });
+  });
+
+  it('has nothing to say about any other text', () => {
+    expect(signedHashes(undefined)).toBeUndefined();
+    expect(signedHashes('')).toBeUndefined();
+    expect(signedHashes('sha256:request:sha256:response')).toBeUndefined();
+    expect(signedHashes(`${request}:short`)).toBeUndefined();
   });
 });
 

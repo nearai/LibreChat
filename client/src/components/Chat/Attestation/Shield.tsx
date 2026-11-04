@@ -1,5 +1,4 @@
 import { memo, useEffect, useRef, useState } from 'react';
-import { useAtomValue } from 'jotai';
 import * as Ariakit from '@ariakit/react';
 import { ArrowUpRight, RefreshCw, X } from 'lucide-react';
 import { Button, buttonVariants } from '@librechat/client';
@@ -7,7 +6,7 @@ import { dataService, QueryKeys } from 'librechat-data-provider';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { TNearAIAttestationResponse } from 'librechat-data-provider';
 import type { DeploymentCheck, DeploymentReport, DeploymentState } from './proof';
-import type { GlyphState, ProofTone } from './Seal';
+import type { GlyphState, SealGlyph, SealTone } from './Seal';
 import type { CheckRow } from './CheckList';
 import {
   DEPLOYMENT_CHECKS,
@@ -18,19 +17,12 @@ import {
   failedDeploymentCheck,
 } from './proof';
 import { useNearAIAttestationQuery } from '~/data-provider/Misc/queries';
-import { proofPulseAtom, useHeaderSealKey } from './state';
-import { ProofGlyph, SealBadge, SealMark } from './Seal';
+import { ProofGlyph, SealMark } from './Seal';
 import { useChatContext } from '~/Providers';
 import { modelVerifyLink } from './links';
-import { sealCode } from './geometry';
 import { useLocalize } from '~/hooks';
 import CheckList from './CheckList';
 import { cn } from '~/utils';
-import Copy from './Copy';
-
-/** How long a fresh "Verified" stays spelled out before the pill folds to its seal. */
-const COLLAPSE_AFTER_MS = 3600;
-const PULSE_MS = 2400;
 
 const pillTones: Record<DeploymentState, string> = {
   checking: 'bg-status-neutral-subtle text-text-secondary',
@@ -46,19 +38,19 @@ const glyphStates: Record<DeploymentState, GlyphState> = {
   unavailable: 'none',
 };
 
-const sealTones: Record<DeploymentState, ProofTone> = {
+const sealTones: Record<DeploymentState, SealTone> = {
   checking: 'neutral',
   verified: 'positive',
   failed: 'critical',
-  unavailable: 'neutral',
+  unavailable: 'none',
 };
 
-const sealCenters = {
+const sealGlyphs: Record<DeploymentState, SealGlyph> = {
   checking: 'spinner',
-  verified: 'badge',
+  verified: 'check',
   failed: 'cross',
   unavailable: 'dash',
-} as const;
+};
 
 const titleColors: Record<DeploymentState, string> = {
   checking: 'text-text-primary',
@@ -97,15 +89,14 @@ const checkCaptions = {
 
 /**
  * Header proof button for NEAR AI endpoints. The server verifies the Gateway and the
- * model's hardware with the inference SDK; the pill shows that result, and its popover
- * lists the checks and the seal drawn from the key that signs this chat's replies.
+ * model's hardware with the inference SDK; the pill shows that result as a word that stays
+ * visible, and its popover lists the checks behind it.
  */
 function Shield() {
   const localize = useLocalize();
   const queryClient = useQueryClient();
   const disclosureRef = useRef<HTMLButtonElement>(null);
   const popover = Ariakit.usePopoverStore({ placement: 'bottom-end' });
-  const open = Ariakit.useStoreState(popover, 'open');
   const { conversation } = useChatContext();
   const params = { endpoint: conversation?.endpoint ?? '', model: conversation?.model ?? '' };
   const queryKey = [QueryKeys.nearaiAttestation, params.endpoint, params.model];
@@ -115,7 +106,6 @@ function Shield() {
     mutationFn: () => dataService.getNearAIAttestation({ ...params, refresh: true }),
     onSuccess: (result: TNearAIAttestationResponse) => queryClient.setQueryData(queryKey, result),
   });
-  const sealKey = useHeaderSealKey(conversation?.conversationId, params.model, data);
 
   const attestation = data?.enabled === true ? data : undefined;
   const state = deploymentState({
@@ -136,32 +126,6 @@ function Shield() {
     previousState.current = state;
   }, [state]);
 
-  const pulse = useAtomValue(proofPulseAtom);
-  const seenPulse = useRef(pulse);
-  const [pulsing, setPulsing] = useState(false);
-  useEffect(() => {
-    if (pulse === seenPulse.current) {
-      return;
-    }
-    seenPulse.current = pulse;
-    setPulsing(true);
-    const timer = setTimeout(() => setPulsing(false), PULSE_MS);
-    return () => clearTimeout(timer);
-  }, [pulse]);
-
-  const [settled, setSettled] = useState(false);
-  useEffect(() => {
-    setSettled(false);
-    if (state !== 'verified') {
-      return;
-    }
-    const timer = setTimeout(() => setSettled(true), COLLAPSE_AFTER_MS);
-    return () => clearTimeout(timer);
-  }, [state, pulse]);
-
-  const [hovered, setHovered] = useState(false);
-  const [focused, setFocused] = useState(false);
-
   if (data?.enabled === false) {
     return null;
   }
@@ -169,14 +133,9 @@ function Shield() {
     return null;
   }
 
-  const collapsed = state === 'verified' && settled && !hovered && !focused && !open;
-  const code = sealKey ? sealCode(sealKey) : undefined;
   const word = localize(words[state]);
   const failed = state === 'failed' ? failedDeploymentCheck(attestation) : undefined;
-  const ariaLabel =
-    state === 'verified' && code
-      ? localize('com_ui_nearai_proof_aria_seal', { 0: word, 1: code })
-      : localize('com_ui_nearai_proof_aria', { 0: word });
+  const ariaLabel = localize('com_ui_nearai_proof_aria', { 0: word });
 
   return (
     <>
@@ -184,18 +143,13 @@ function Shield() {
         ref={disclosureRef}
         store={popover}
         aria-label={ariaLabel}
+        title={ariaLabel}
         data-testid="header-nearai-shield"
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
         className={cn(
-          'relative inline-flex h-9 shrink-0 items-center overflow-hidden rounded-full text-sm font-semibold',
-          'ease-proof-spring transition-all duration-300 motion-reduce:transition-none',
+          'relative inline-flex h-9 shrink-0 items-center gap-1.5 overflow-hidden rounded-full pr-3 pl-2 text-sm font-semibold',
+          'transition-colors duration-200 motion-reduce:transition-none',
           'focus-visible:ring-focus-control focus-visible:ring-2 focus-visible:outline-hidden',
-          collapsed ? 'gap-0 px-2' : 'gap-1.5 pr-3 pl-2',
           pillTones[state],
-          pulsing && 'animate-proof-pulse motion-reduce:animate-none',
         )}
       >
         <ProofGlyph
@@ -203,13 +157,7 @@ function Shield() {
           failedSegment={failed ? DEPLOYMENT_CHECKS.indexOf(failed) : undefined}
           className="size-5"
         />
-        <span
-          aria-hidden="true"
-          className={cn(
-            'ease-proof-spring overflow-hidden whitespace-nowrap transition-all duration-300 motion-reduce:transition-none',
-            collapsed ? 'max-w-0 opacity-0' : 'max-w-36 opacity-100',
-          )}
-        >
+        <span aria-hidden="true" className="whitespace-nowrap">
           {word}
         </span>
         {fresh && (
@@ -232,13 +180,8 @@ function Shield() {
         className="popover-animate border-border-light bg-surface-secondary text-text-primary rounded-theme-popover z-[200] flex max-h-[var(--popover-available-height)] w-[23.25rem] max-w-[calc(100vw-2rem)] flex-col gap-3.5 overflow-y-auto overscroll-contain border p-4 shadow-lg focus:outline-none"
       >
         <div className="flex items-start gap-3">
-          <SealMark
-            key={state}
-            sealKey={state === 'verified' ? sealKey : undefined}
-            tone={sealTones[state]}
-            center={sealCenters[state]}
-          />
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5 pt-1.5">
+          <SealMark key={state} tone={sealTones[state]} glyph={sealGlyphs[state]} />
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
             <Ariakit.PopoverHeading
               className={cn('text-base leading-5.25 font-bold', titleColors[state])}
             >
@@ -266,27 +209,6 @@ function Shield() {
         </p>
 
         {state !== 'unavailable' && <DeploymentChecks state={state} report={attestation} />}
-
-        {state === 'verified' && (
-          <div className="flex min-h-5 items-center gap-2">
-            {code && sealKey ? (
-              <>
-                <SealBadge className="size-4" />
-                <span className="font-mono text-xs font-semibold">
-                  {localize('com_ui_nearai_seal_code', { 0: code })}
-                </span>
-                <Copy value={code} label={localize('com_ui_nearai_copy_seal')} />
-                <span className="text-text-secondary ml-auto text-xs">
-                  {localize('com_ui_nearai_seal_same')}
-                </span>
-              </>
-            ) : (
-              <span className="text-text-secondary text-xs">
-                {localize('com_ui_nearai_seal_pending')}
-              </span>
-            )}
-          </div>
-        )}
 
         <div className="flex items-center gap-2">
           <Button
@@ -386,6 +308,9 @@ function DeploymentChecks({
   const localize = useLocalize();
   const states = deploymentChecks(state, report);
   const caption = (check: DeploymentCheck) => {
+    if (states[check] === 'active') {
+      return localize('com_ui_nearai_proof_checking');
+    }
     if (states[check] === 'fail') {
       return localize('com_ui_nearai_check_fail_caption', { 0: report?.errorCode ?? '' });
     }
@@ -394,6 +319,9 @@ function DeploymentChecks({
     }
     if (states[check] === 'skip') {
       return localize('com_ui_nearai_check_unconfirmed');
+    }
+    if (check === 'cpu' && report?.tcbStatus) {
+      return localize('com_ui_nearai_check_cpu_status_caption', { 0: report.tcbStatus });
     }
     return localize(checkCaptions[check]);
   };

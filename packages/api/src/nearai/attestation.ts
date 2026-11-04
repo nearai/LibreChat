@@ -7,16 +7,8 @@ import {
   createTdxQuoteVerifier,
   createGpuEvidenceVerifier,
 } from '@nearai/inference-sdk/node';
-import type {
-  E2eeModelKey,
-  InferenceClientOptions,
-  ModelAttestationVerifiers,
-} from '@nearai/inference-sdk/node';
-import type {
-  TNearAISigningKey,
-  TNearAICheckOutcome,
-  TNearAIDeploymentCheck,
-} from 'librechat-data-provider';
+import type { InferenceClientOptions, ModelAttestationVerifiers } from '@nearai/inference-sdk/node';
+import type { TNearAICheckOutcome, TNearAIDeploymentCheck } from 'librechat-data-provider';
 import type { AppConfig } from '@librechat/data-schemas';
 import type { NearAIReceipt } from './receipts';
 import { getNearAIReceiptCollector, observeCompletionBody } from './receipts';
@@ -41,8 +33,8 @@ export interface NearAIAttestationStatus {
   errorCode?: string;
   message?: string;
   checks?: NearAIDeploymentChecks;
-  /** The verified session's model key, which signs the model's replies. */
-  signingKey?: TNearAISigningKey;
+  /** Intel's status for the model's platform, when all of its quotes read the same. */
+  tcbStatus?: string;
 }
 
 /** Matches the `Fetch` shape the OpenAI client configuration accepts. */
@@ -90,19 +82,21 @@ export function isNearAIBaseURL(baseURL?: string | null): boolean {
 /** What a verified session established that `verify(model)` does not return. */
 interface SessionFacts {
   gpu: 'passed' | 'not_provided';
-  signingKey?: TNearAISigningKey;
+  tcbStatus?: string;
 }
 
 /** Counts for the verification in flight: every model report passes one TDX quote check. */
 interface VerificationRun {
   quotes: number;
   gpuAccepted: number;
+  tcbStatuses: Set<string>;
 }
 
 /**
- * The SDK client, extended through its protected seams to keep the attested model key and
- * whether NVIDIA accepted GPU evidence. Nothing is verified twice: the wrappers delegate
- * to the caller's verifiers or the SDK's defaults, and only count what they accept.
+ * The SDK client, extended through its protected seams to keep Intel's status for the
+ * model's platform and whether NVIDIA accepted GPU evidence. Nothing is verified twice: the
+ * wrappers delegate to the caller's verifiers or the SDK's defaults, and only note what
+ * they accept.
  */
 class NearAIInferenceClient extends InferenceClient {
   private readonly facts = new Map<string, SessionFacts>();
@@ -114,14 +108,14 @@ class NearAIInferenceClient extends InferenceClient {
   }
 
   protected override async createVerificationState(model: string) {
-    const run: VerificationRun = { quotes: 0, gpuAccepted: 0 };
+    const run: VerificationRun = { quotes: 0, gpuAccepted: 0, tcbStatuses: new Set() };
     this.runs.set(model, run);
     try {
       const session = await super.createVerificationState(model);
       this.facts.set(model, {
         /** The SDK accepts a report without GPU evidence, so a pass needs it from every one. */
         gpu: run.gpuAccepted > 0 && run.gpuAccepted === run.quotes ? 'passed' : 'not_provided',
-        signingKey: toSigningKey(session.modelKey),
+        tcbStatus: run.tcbStatuses.size === 1 ? [...run.tcbStatuses][0] : undefined,
       });
       return session;
     } catch (error) {
@@ -145,6 +139,7 @@ class NearAIInferenceClient extends InferenceClient {
         const result = await verifyQuote(quote);
         if (run) {
           run.quotes += 1;
+          run.tcbStatuses.add(result.tcbStatus);
         }
         return result;
       },
@@ -156,15 +151,6 @@ class NearAIInferenceClient extends InferenceClient {
       },
     };
   }
-}
-
-/** An Ed25519 model key is its own signing address; the SDK checks that they match. The
- *  client requests Ed25519 keys, the SDK default, so an ECDSA key is not expected. */
-function toSigningKey(modelKey?: E2eeModelKey): TNearAISigningKey | undefined {
-  if (modelKey?.signingAlgo !== 'ed25519') {
-    return undefined;
-  }
-  return { signingAlgo: 'ed25519', signingAddress: modelKey.publicKey };
 }
 
 /** One SDK client per credential pair, so Chat and status checks share the verification cache. */
@@ -277,7 +263,7 @@ export async function verifyNearAIModel(
     };
     if (facts) {
       status.checks = { gateway: 'passed', cpu: 'passed', gpu: facts.gpu, key: 'passed' };
-      status.signingKey = facts.signingKey;
+      status.tcbStatus = facts.tcbStatus;
     }
     statuses.set(statusKey, status);
     return status;

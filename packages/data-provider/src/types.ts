@@ -1261,12 +1261,6 @@ export type TNearAIDeploymentCheck = 'gateway' | 'cpu' | 'gpu' | 'key';
  */
 export type TNearAICheckOutcome = 'passed' | 'failed' | 'not_provided' | 'not_checked';
 
-/** The attested model key that signs replies; `signingAddress` matches receipts'. */
-export type TNearAISigningKey = {
-  signingAlgo: 'ed25519' | 'ecdsa';
-  signingAddress: string;
-};
-
 /** NEAR AI deployment attestation, verified server-side by the inference SDK. */
 export type TNearAIAttestationResponse =
   | { enabled: false }
@@ -1279,8 +1273,9 @@ export type TNearAIAttestationResponse =
       message?: string;
       /** Outcome of each check. Absent from servers that predate it. */
       checks?: Record<TNearAIDeploymentCheck, TNearAICheckOutcome>;
-      /** The verified session's model key. Present only when `status` is `verified`. */
-      signingKey?: TNearAISigningKey;
+      /** Intel's status for the model's platform, under the data set the SDK fetched. Absent
+       *  when the model's quotes disagree or the check did not pass. */
+      tcbStatus?: string;
       /** NEAR AI verify page; the shields link to it with the model and receipts. */
       verifyUrl?: string;
     };

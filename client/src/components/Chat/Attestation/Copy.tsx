@@ -7,11 +7,14 @@ import { cn } from '~/utils';
 export default function Copy({
   value,
   label,
+  text,
   className,
 }: {
   value: string;
   /** Names what is copied, for screen readers. */
   label: string;
+  /** The word on the pill before it copies. Defaults to "Copy". */
+  text?: string;
   className?: string;
 }) {
   const localize = useLocalize();
@@ -38,7 +41,9 @@ export default function Copy({
         className,
       )}
     >
-      <span aria-live="polite">{copied ? localize('com_ui_copied') : localize('com_ui_copy')}</span>
+      <span aria-live="polite">
+        {copied ? localize('com_ui_copied') : (text ?? localize('com_ui_copy'))}
+      </span>
     </button>
   );
 }

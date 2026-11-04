@@ -1,22 +1,24 @@
 import { memo } from 'react';
-import { Loader2, Minus, X } from 'lucide-react';
-import { BADGE_16, BADGE_200, CHECK_PATH, sealStrands } from './geometry';
+import { BADGE_200, DASH_PATH, CHECK_PATH, CLOCK_PATH, CROSS_PATH, PENCIL_PATH } from './geometry';
 import { cn } from '~/utils';
 
-export type ProofTone = 'positive' | 'caution' | 'critical' | 'neutral';
+/** `none` has no seal to show: it draws a dashed ring instead. */
+export type SealTone = 'positive' | 'caution' | 'critical' | 'neutral' | 'none';
+
+export type SealGlyph = 'check' | 'clock' | 'pencil' | 'cross' | 'dash' | 'spinner';
 
 /**
  * The states a pill or tag glyph moves between. `pending` waits on evidence nobody is
- * fetching yet (a reply the model has not signed); `checking` is a request in flight.
+ * fetching yet (a reply whose signature has not arrived); `checking` is a request in flight.
  */
-export type GlyphState = 'pending' | 'checking' | 'verified' | 'caution' | 'failed' | 'none';
-
-const badgeFills: Record<ProofTone, string> = {
-  positive: 'fill-status-success-strong',
-  caution: 'fill-status-warning-strong',
-  critical: 'fill-status-error-strong',
-  neutral: 'fill-status-neutral',
-};
+export type GlyphState =
+  | 'pending'
+  | 'checking'
+  | 'verified'
+  | 'gateway'
+  | 'edited'
+  | 'failed'
+  | 'none';
 
 /** Arcs around the badge, one per check: four for a deployment, three for a reply. */
 const segmentPaths: Record<3 | 4, string[]> = {
@@ -36,9 +38,13 @@ const segmentPaths: Record<3 | 4, string[]> = {
 /** Fills on SVG paths scale about their own box rather than the viewBox origin. */
 const ownBox = 'origin-center [transform-box:fill-box]';
 
+/** Moves a glyph from the badge's 16-unit box into the 200-unit box around the origin. */
+const BADGE_BOX = 'translate(-100 -100) scale(12.5)';
+
 /**
  * The mark inside a proof pill or tag. While checking it is a ring of segments, one per
- * check; when the evidence verifies, the segments fade and the badge springs in.
+ * check; when the evidence verifies, the segments fade and the badge springs in. A reply
+ * only the Gateway signed shows a clock with no badge.
  */
 export const ProofGlyph = memo(function ProofGlyph({
   state,
@@ -51,7 +57,7 @@ export const ProofGlyph = memo(function ProofGlyph({
   failedSegment?: number;
   className?: string;
 }) {
-  const sealed = state === 'verified' || state === 'caution';
+  const sealed = state === 'verified' || state === 'edited';
   return (
     <svg
       viewBox="-100 -100 200 200"
@@ -71,7 +77,7 @@ export const ProofGlyph = memo(function ProofGlyph({
             state === 'failed' && i === failedSegment
               ? 'stroke-status-error-strong'
               : 'stroke-border-medium',
-            (sealed || state === 'none') && 'opacity-0',
+            (sealed || state === 'gateway' || state === 'none') && 'opacity-0',
             state === 'pending' && 'animate-pulse motion-reduce:animate-none',
           )}
         />
@@ -81,17 +87,31 @@ export const ProofGlyph = memo(function ProofGlyph({
         className={cn(
           ownBox,
           'ease-proof-spring transition-all duration-300 motion-reduce:transition-none',
-          state === 'caution' ? badgeFills.caution : badgeFills.positive,
+          state === 'edited' ? 'fill-status-warning-strong' : 'fill-status-success-strong',
           sealed ? 'scale-100 opacity-100' : 'scale-50 opacity-0',
         )}
       />
-      {sealed && (
+      {state === 'verified' && (
         <path
           d={CHECK_PATH}
-          transform="translate(-100 -100) scale(12.5)"
+          transform={BADGE_BOX}
           strokeWidth={1.8}
           className="stroke-text-on-status"
         />
+      )}
+      {state === 'edited' && (
+        <path
+          d={PENCIL_PATH}
+          transform={BADGE_BOX}
+          strokeWidth={1.3}
+          className="stroke-text-on-status"
+        />
+      )}
+      {state === 'gateway' && (
+        <g transform={BADGE_BOX} stroke="currentColor" strokeWidth={2}>
+          <circle cx="8" cy="8" r="5.5" />
+          <path d="M8 5.2v3l2 1.4" />
+        </g>
       )}
       {state === 'checking' && (
         <g transform="translate(-48 -48) scale(6)">
@@ -123,120 +143,82 @@ export const ProofGlyph = memo(function ProofGlyph({
   );
 });
 
-const strandStrokes: Record<ProofTone, [string, string]> = {
-  positive: ['stroke-status-success-strong', 'stroke-status-info'],
-  caution: ['stroke-status-warning-strong', 'stroke-status-warning-strong'],
-  critical: ['stroke-status-error-strong', 'stroke-status-error-strong'],
-  neutral: ['stroke-status-neutral', 'stroke-status-neutral'],
+const sealStyles: Record<Exclude<SealTone, 'none'>, string> = {
+  positive: 'fill-status-success-strong',
+  caution: 'fill-status-warning-strong',
+  critical: 'fill-status-error-subtle stroke-status-error-strong',
+  neutral: 'fill-status-neutral-subtle stroke-status-neutral',
 };
 
-const centerColors: Record<ProofTone, string> = {
-  positive: 'text-status-proof',
-  caution: 'text-status-warning',
+const glyphColors: Record<SealTone, string> = {
+  positive: 'text-text-on-status',
+  caution: 'text-text-on-status',
   critical: 'text-status-error',
   neutral: 'text-text-secondary',
+  none: 'text-text-secondary',
 };
 
-/** The filled badge with its check, in a 16-unit box. */
-function Badge({ tone }: { tone: ProofTone }) {
-  return (
-    <>
-      <path d={BADGE_16} className={badgeFills[tone]} />
-      <path
-        d={CHECK_PATH}
-        fill="none"
-        strokeWidth={1.7}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="stroke-text-on-status"
-      />
-    </>
-  );
-}
+const sealGlyphs: Record<Exclude<SealGlyph, 'spinner'>, { d: string; width: number }> = {
+  check: { d: CHECK_PATH, width: 1.4 },
+  clock: { d: CLOCK_PATH, width: 1 },
+  pencil: { d: PENCIL_PATH, width: 1 },
+  cross: { d: CROSS_PATH, width: 1.4 },
+  dash: { d: DASH_PATH, width: 1.4 },
+};
 
-/**
- * The seal at popover size: two woven strands and three petals drawn from `sealKey`
- * around the badge. Without a key it draws a dashed ring, so an unproven state never
- * borrows a seal it has not earned.
- */
+/** The fixed seal at popover size, with the glyph that says what its status is. */
 export const SealMark = memo(function SealMark({
-  sealKey,
   tone,
-  center,
-  size = 56,
+  glyph,
+  size = 40,
 }: {
-  sealKey?: string;
-  tone: ProofTone;
-  center: 'badge' | 'spinner' | 'cross' | 'dash';
+  tone: SealTone;
+  glyph: SealGlyph;
   size?: number;
 }) {
-  const strands = sealKey ? sealStrands(sealKey) : undefined;
-  const [bandStroke, roseStroke] = strandStrokes[tone];
-  const glyph = 'size-4';
   return (
-    <div
+    <svg
+      viewBox="-100 -100 200 200"
       aria-hidden="true"
-      className="animate-proof-stamp relative shrink-0 motion-reduce:animate-none"
+      fill="none"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cn('animate-proof-stamp shrink-0 motion-reduce:animate-none', glyphColors[tone])}
       style={{ width: size, height: size }}
     >
-      <svg viewBox="-100 -100 200 200" fill="none" className="size-full overflow-visible">
-        {strands ? (
-          <>
-            <path
-              d={strands.band}
-              strokeWidth={0.9}
-              vectorEffect="non-scaling-stroke"
-              className={bandStroke}
-            />
-            <path
-              d={strands.rose}
-              strokeWidth={0.9}
-              vectorEffect="non-scaling-stroke"
-              className={roseStroke}
-            />
-          </>
-        ) : (
-          <circle
-            r="84"
-            strokeWidth={1.2}
-            strokeDasharray="3 4"
-            vectorEffect="non-scaling-stroke"
-            className="stroke-border-medium"
+      {tone === 'none' ? (
+        <circle
+          r="84"
+          strokeWidth={1.2}
+          strokeDasharray="3 4"
+          vectorEffect="non-scaling-stroke"
+          className="stroke-border-medium"
+        />
+      ) : (
+        <path
+          d={BADGE_200}
+          strokeWidth={1.2}
+          vectorEffect="non-scaling-stroke"
+          className={sealStyles[tone]}
+        />
+      )}
+      {glyph === 'spinner' ? (
+        <g transform="translate(-40 -40) scale(5)">
+          <path
+            d="M8 2.5a5.5 5.5 0 1 1-5.5 5.5"
+            stroke="currentColor"
+            strokeWidth={1.8}
+            className={cn(ownBox, 'animate-spin motion-reduce:animate-none')}
           />
-        )}
-      </svg>
-      <div
-        className={cn(
-          'absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2',
-          centerColors[tone],
-        )}
-      >
-        {center === 'badge' && (
-          <svg viewBox="0 0 16 16" style={{ width: size * 0.4, height: size * 0.4 }}>
-            <Badge tone={tone} />
-          </svg>
-        )}
-        {center === 'spinner' && (
-          <Loader2 className={cn(glyph, 'animate-spin motion-reduce:animate-none')} />
-        )}
-        {center === 'cross' && <X className={glyph} strokeWidth={2.4} />}
-        {center === 'dash' && <Minus className={glyph} strokeWidth={2.4} />}
-      </div>
-    </div>
-  );
-});
-
-/** The filled badge alone, for inline use beside a seal code. */
-export function SealBadge({
-  tone = 'positive',
-  className,
-}: {
-  tone?: ProofTone;
-  className?: string;
-}) {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true" className={cn('shrink-0', className)}>
-      <Badge tone={tone} />
+        </g>
+      ) : (
+        <path
+          d={sealGlyphs[glyph].d}
+          transform={BADGE_BOX}
+          stroke="currentColor"
+          strokeWidth={sealGlyphs[glyph].width}
+        />
+      )}
     </svg>
   );
-}
+});

@@ -1,12 +1,11 @@
 import React from 'react';
 import { RecoilRoot } from 'recoil';
-import { dataService, QueryKeys } from 'librechat-data-provider';
+import { dataService } from 'librechat-data-provider';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import type { TMessage, TNearAIAttestationResponse } from 'librechat-data-provider';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import type { TNearAIAttestationResponse } from 'librechat-data-provider';
 import Shield from '../Shield';
 
-const KEY = '5a0210f2442c79355784f9de021985429561da5bacc3a4424b01ac52b7e0caff';
 const MODEL = 'z-ai/glm-5.3-flash';
 
 /** The HTTP boundary: a plain copy of `dataService` so its request can be spied on. */
@@ -32,11 +31,8 @@ const verified: TNearAIAttestationResponse = {
   verifyUrl: 'https://cloud.near.ai/verify',
 };
 
-function renderShield(messages?: TMessage[]) {
+function renderShield() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  if (messages) {
-    client.setQueryData([QueryKeys.messages, 'c-1'], messages);
-  }
   return render(<Shield />, {
     wrapper: ({ children }) => (
       <QueryClientProvider client={client}>
@@ -66,101 +62,82 @@ describe('Shield', () => {
 
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText('Model verified')).toBeInTheDocument();
-    for (const check of ['NEAR AI Gateway', 'CPU enclave · Intel TDX', 'GPU · NVIDIA']) {
+    for (const check of ['NEAR AI Gateway', 'CPU enclave', 'GPU', 'Signing key and model']) {
       expect(within(dialog).getByText(check)).toBeInTheDocument();
     }
     expect(
-      within(dialog).getByText('The seal appears once the model signs a reply.'),
+      within(dialog).getByText(
+        `Hardware evidence for ${MODEL} passed these checks. This says nothing about earlier replies.`,
+      ),
     ).toBeVisible();
+    expect(within(dialog).queryByText(/seal/i)).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: /Copy/ })).toBeNull();
     expect(within(dialog).getByRole('link', { name: /Open full report/ })).toHaveAttribute(
       'href',
       `https://cloud.near.ai/verify?model=${encodeURIComponent(MODEL)}`,
     );
   });
 
-  it('prints the seal of the key that signed this chat', async () => {
-    getAttestation.mockResolvedValueOnce(verified);
-    renderShield([
-      {
-        messageId: 'm-1',
-        conversationId: 'c-1',
-        parentMessageId: null,
-        isCreatedByUser: false,
-        text: 'hi',
-        metadata: {
-          nearai: {
-            receipts: [
-              {
-                completionId: 'chatcmpl-1',
-                model: MODEL,
-                status: 'verified' as const,
-                verifiedAt: new Date().toISOString(),
-                signatureKind: 'provider_tee' as const,
-                signingAddress: KEY,
-              },
-            ],
-          },
-        },
-      } as TMessage,
-    ]);
+  it('keeps the status word visible after verifying', async () => {
+    jest.useFakeTimers();
+    try {
+      getAttestation.mockResolvedValueOnce(verified);
+      renderShield();
 
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'NEAR AI proof: Verified, seal 5A02·CAFF' }),
-    );
-    expect(await screen.findByText('Seal 5A02·CAFF')).toBeVisible();
-    expect(screen.getByText('Same seal on every signed reply')).toBeVisible();
+      const pill = await screen.findByRole('button', { name: 'NEAR AI proof: Verified' });
+      act(() => {
+        jest.advanceTimersByTime(60_000);
+      });
+      const word = within(pill).getByText('Verified');
+      expect(word).toBeVisible();
+      expect(word.className).not.toMatch(/max-w-0|opacity-0/);
+      expect(pill.className).not.toMatch(/gap-0/);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
-  it("draws the verified session's seal before the model signs a reply", async () => {
+  it('claims no result while the checks are in flight', async () => {
+    getAttestation.mockReturnValueOnce(new Promise(() => undefined));
+    renderShield();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'NEAR AI proof: Checking' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).queryByText(/passed/)).not.toBeInTheDocument();
+    expect(within(dialog).queryByText('Intel TDX quote is valid')).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(/seal/i)).not.toBeInTheDocument();
+  });
+
+  it("gives Intel's status for the platform, not a verdict on its firmware", async () => {
     getAttestation.mockResolvedValueOnce({
       ...verified,
       checks: { gateway: 'passed', cpu: 'passed', gpu: 'passed', key: 'passed' },
-      signingKey: { signingAlgo: 'ed25519', signingAddress: KEY },
+      tcbStatus: 'OutOfDate',
     });
-    renderShield([]);
+    renderShield();
 
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'NEAR AI proof: Verified, seal 5A02·CAFF' }),
-    );
-    expect(await screen.findByText('Seal 5A02·CAFF')).toBeVisible();
+    fireEvent.click(await screen.findByRole('button', { name: 'NEAR AI proof: Verified' }));
+    const dialog = await screen.findByRole('dialog');
     expect(
-      screen.queryByText('The seal appears once the model signs a reply.'),
-    ).not.toBeInTheDocument();
+      within(dialog).getByText(
+        'Intel TDX quote is valid. Intel lists this platform as OutOfDate in its default data set.',
+      ),
+    ).toBeVisible();
+    expect(within(dialog).getByText('Enclave quote is valid')).toBeVisible();
+    expect(within(dialog).getByText("NVIDIA's signed verdict: passed")).toBeVisible();
+    expect(within(dialog).getByText('Key bound to this hardware')).toBeVisible();
+    expect(within(dialog).queryByText(/up to date|published/i)).not.toBeInTheDocument();
   });
 
-  it("prefers the session's key to an older reply's", async () => {
-    const replyKey = 'ab'.repeat(32);
+  it('gives no status when the server reports none', async () => {
     getAttestation.mockResolvedValueOnce({
       ...verified,
-      signingKey: { signingAlgo: 'ed25519', signingAddress: KEY },
+      checks: { gateway: 'passed', cpu: 'passed', gpu: 'passed', key: 'passed' },
     });
-    renderShield([
-      {
-        messageId: 'm-1',
-        conversationId: 'c-1',
-        parentMessageId: null,
-        isCreatedByUser: false,
-        text: 'hi',
-        metadata: {
-          nearai: {
-            receipts: [
-              {
-                completionId: 'chatcmpl-1',
-                model: MODEL,
-                status: 'verified' as const,
-                verifiedAt: new Date().toISOString(),
-                signatureKind: 'provider_tee' as const,
-                signingAddress: replyKey,
-              },
-            ],
-          },
-        },
-      } as TMessage,
-    ]);
+    renderShield();
 
-    expect(
-      await screen.findByRole('button', { name: 'NEAR AI proof: Verified, seal 5A02·CAFF' }),
-    ).toBeVisible();
+    fireEvent.click(await screen.findByRole('button', { name: 'NEAR AI proof: Verified' }));
+    expect(await screen.findByText('Intel TDX quote is valid')).toBeVisible();
   });
 
   it('flags a GPU check that had no evidence to examine', async () => {
@@ -172,10 +149,10 @@ describe('Shield', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'NEAR AI proof: Verified' }));
     const dialog = await screen.findByRole('dialog');
-    const gpu = within(dialog).getByText('GPU · NVIDIA').closest('li') as HTMLElement;
+    const gpu = within(dialog).getByText('GPU').closest('li') as HTMLElement;
     expect(within(gpu).getByText('No evidence was sent, so this is not proven')).toBeVisible();
     expect(within(gpu).getByText(': needs attention')).toBeInTheDocument();
-    expect(within(dialog).getByText('Quote is valid and firmware is up to date')).toBeVisible();
+    expect(within(dialog).getByText('Intel TDX quote is valid')).toBeVisible();
   });
 
   it("fails the check the server names, whatever the code's area", async () => {

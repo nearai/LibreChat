@@ -6,8 +6,7 @@ import { getNearAICredentials, verifyNearAIModel } from './attestation';
  * GET /api/nearai/attestation?endpoint=<name>&model=<id>[&refresh=1]
  * Verifies the NEAR AI Gateway and model deployment with the inference SDK.
  * Non-NEAR endpoints answer `{ enabled: false }` so the client can hide the shield.
- * `checks` holds each check's outcome and `signingKey` the verified model key, so the proof
- * can show its seal before the first reply.
+ * `checks` holds each check's outcome and `tcbStatus` Intel's status for the model's platform.
  * `verifyUrl` (from NEAR_AI_VERIFY_URL) is the NEAR AI page both shields link to.
  */
 export async function nearAIAttestationHandler(
