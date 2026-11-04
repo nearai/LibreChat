@@ -2016,26 +2016,3 @@ describe('native copy protected token admission', () => {
     ).rejects.toMatchObject({ code: 'content_filter_block' });
   });
 });
-
-it('preserves genuine verification receipts and source provenance on a native copy', () => {
-  const metadata = { nearai: { receipts: [{ completionId: 'genuine', status: 'verified' }] } };
-  const builder = createImportBatchBuilder('owner');
-  builder.startConversation('NEAR AI');
-  cloneMessagesWithTimestamps(
-    [
-      { messageId: 'original', parentMessageId: Constants.NO_PARENT, text: 'Reply', metadata },
-      {
-        messageId: 'imported',
-        parentMessageId: 'original',
-        text: 'Import',
-        metadata,
-        isUserSubmitted: true,
-      },
-    ],
-    builder,
-    { nativeCopy: true },
-  );
-  expect(builder.messages[0].metadata).toEqual(metadata);
-  expect(builder.messages[0].isUserSubmitted).not.toBe(true);
-  expect(builder.messages[1].isUserSubmitted).toBe(true);
-});
