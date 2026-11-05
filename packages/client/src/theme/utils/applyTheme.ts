@@ -7,6 +7,7 @@ import {
   primaryButtonFallbacks,
   primaryInkFallbacks,
   primaryInkRoles,
+  proofFallbacks,
   MARK_NEIGHBOURHOOD,
   themeAppearanceProperties,
   themeBrandTokens,
@@ -84,6 +85,11 @@ function mapColors(colors: IThemeRGB, base?: IThemeRGB): Array<[string, string]>
   }
 
   Object.entries(overlayFallbacks(colors)).forEach(([role, value]) => {
+    variables.push([colorProperty(role as keyof IThemeRGB), value]);
+  });
+
+  /** The proof pair follows a theme's own success colors, as in `resolveTheme`. */
+  Object.entries(proofFallbacks(colors, base ?? {})).forEach(([role, value]) => {
     variables.push([colorProperty(role as keyof IThemeRGB), value]);
   });
 

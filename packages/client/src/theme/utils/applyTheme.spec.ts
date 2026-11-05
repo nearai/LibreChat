@@ -627,6 +627,28 @@ describe('applyTheme', () => {
     expect(root.style.getPropertyValue('--status-verified')).toBe('');
   });
 
+  it('carries a legacy theme without a proof pair onto its success colors', () => {
+    const root = document.documentElement;
+
+    applyTheme({ 'rgb-status-success-subtle': '40 20 70' }, root, {
+      'rgb-status-success': '200 180 255',
+    });
+
+    expect(root.style.getPropertyValue('--status-proof')).toBe('200 180 255');
+    expect(root.style.getPropertyValue('--status-proof-subtle')).toBe('40 20 70');
+  });
+
+  it('leaves the proof pair alone for a legacy theme that keeps the stock success colors', () => {
+    const root = document.documentElement;
+
+    applyTheme({ 'rgb-text-primary': '10 20 30' }, root, {
+      'rgb-status-success': '200 180 255',
+    });
+
+    expect(root.style.getPropertyValue('--status-proof')).toBe('');
+    expect(root.style.getPropertyValue('--status-proof-subtle')).toBe('');
+  });
+
   it('clears only properties owned by the theme module', () => {
     const root = document.documentElement;
     root.style.setProperty('--text-primary', '1 2 3');

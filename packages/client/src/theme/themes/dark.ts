@@ -144,6 +144,8 @@ export const darkTheme: IThemeRGB = {
    *  white `text-on-status` check. No hue clears 3:1 on #2f2f2f and 4.5:1
    *  under a white check at once — the check would have to stop being white. */
   'rgb-status-verified': '26 127 216', // #1a7fd8
+  'rgb-status-proof': '133 201 161', // #85c9a1
+  'rgb-status-proof-subtle': '24 49 36', // #183124
   'rgb-text-on-status': '255 255 255', // #fff (white)
 
   // Brand colors

@@ -181,6 +181,8 @@
   --color-status-neutral-subtle: rgb(var(--status-neutral-subtle));
   --color-status-neutral-border: rgb(var(--status-neutral-border));
   --color-status-verified: rgb(var(--status-verified));
+  --color-status-proof: rgb(var(--status-proof));
+  --color-status-proof-subtle: rgb(var(--status-proof-subtle));
 
   /* data series */
   --color-series-1: rgb(var(--series-1));

@@ -158,6 +158,8 @@ export const clickHouseLightTheme: IThemeRGB = {
   'rgb-status-neutral-subtle': '246 247 250', // #f6f7fa (feedback.neutral.background)
   'rgb-status-neutral-border': '230 231 233', // #e6e7e9 (feedback.neutral.stroke)
   'rgb-status-verified': '16 78 198', // #104ec6 (palette.info.600, matching status-info)
+  'rgb-status-proof': '0 97 8', // #006108 (palette.success.800, matching status-success)
+  'rgb-status-proof-subtle': '229 255 232', // #e5ffe8 (feedback.success.background)
   'rgb-text-on-status': '255 255 255', // #ffffff (palette.neutral.0)
 
   // Brand colors
@@ -341,6 +343,8 @@ export const clickHouseDarkTheme: IThemeRGB = {
   'rgb-status-neutral-subtle': '65 65 65', // #414141 (feedback.neutral.background)
   'rgb-status-neutral-border': '50 50 50', // #323232 (feedback.neutral.stroke)
   'rgb-status-verified': '109 155 243', // #6d9bf3 (palette.info.300, matching status-info-strong)
+  'rgb-status-proof': '204 255 208', // #ccffd0 (feedback.success.foreground, matching status-success)
+  'rgb-status-proof-subtle': '0 66 6', // #004206 (feedback.success.background)
   'rgb-text-on-status': '29 29 29', // #1d1d1d (iconButton.badge.foreground, the label Click UI sets on its yellow)
 
   // Brand colors

@@ -75,6 +75,25 @@ module.exports = {
           from: { transform: 'rotate(0deg)' },
           to: { transform: 'rotate(-360deg)' },
         },
+        /** NEAR AI proof seal: it settles into place when a check returns, never on a timer. */
+        'proof-stamp': {
+          from: { transform: 'scale(0.9)', opacity: '0.4' },
+          to: { transform: 'scale(1)', opacity: '1' },
+        },
+        /** One light sweep across a proof pill when fresh evidence verifies. */
+        'proof-shine': {
+          '0%': { left: '-40%', opacity: '1' },
+          '100%': { left: '130%', opacity: '1' },
+        },
+        'proof-row': {
+          from: { opacity: '0', transform: 'translateY(4px)' },
+          to: { opacity: '1', transform: 'none' },
+        },
+      },
+      transitionTimingFunction: {
+        /** A short overshoot for marks that land: the seal and its badge. */
+        'proof-spring':
+          'linear(0, 0.154, 0.458, 0.748, 0.952, 1.06, 1.094, 1.084, 1.056, 1.028, 1.007, 0.995, 0.991, 0.992, 0.994, 0.997, 1)',
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-out forwards',
@@ -90,6 +109,10 @@ module.exports = {
         'logo-blink': 'logo-blink 3s infinite',
         'refresh-link-spin': 'refresh-link-spin 650ms cubic-bezier(0.42, 0, 0.58, 1)',
         'reset-spin': 'reset-spin 500ms cubic-bezier(0.22, 1, 0.36, 1)',
+        'proof-stamp':
+          'proof-stamp 420ms linear(0, 0.154, 0.458, 0.748, 0.952, 1.06, 1.094, 1.084, 1.056, 1.028, 1.007, 0.995, 0.991, 0.992, 0.994, 0.997, 1) both',
+        'proof-shine': 'proof-shine 900ms 250ms cubic-bezier(0.2, 0.8, 0.2, 1) both',
+        'proof-row': 'proof-row 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both',
       },
     },
   },
