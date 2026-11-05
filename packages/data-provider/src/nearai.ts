@@ -92,3 +92,10 @@ export const nearAIVerificationReportSchema = z
   );
 
 export type TNearAIVerificationReport = z.infer<typeof nearAIVerificationReportSchema>;
+
+export function hasVerifiedReports(reports?: TNearAIVerificationReport[]): boolean {
+  return (
+    !!reports?.length &&
+    reports.every(({ status }) => status === 'verified' || status === 'partial')
+  );
+}

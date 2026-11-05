@@ -166,7 +166,6 @@ export function resolveModelStreamError(error: unknown): string | undefined {
     : `${MODEL_STREAM_FALLBACK[failure]}\n${JSON.stringify({ type: MODEL_STREAM_ERROR_TYPES[failure] })}`;
 }
 
-/** The NEAR AI fetch answers a failed deployment check with this OpenAI-format error type. */
 function isNearAIAttestationFailure(error: unknown): boolean {
   let current = error;
   for (let depth = 0; depth < MAX_CAUSE_DEPTH && current != null; depth++) {
@@ -194,18 +193,12 @@ export function resolveNearAIAttestationError(error: unknown): string | undefine
     : undefined;
 }
 
-/** The parts of the app config that decide whether provider text may reach the reader. */
 type ContentProtectionConfig = {
   filters?: Parameters<typeof hasModelBoundContentProtection>[0];
   messageFilter?: { pii?: Parameters<typeof hasModelBoundContentProtection>[1] };
 };
 
-/**
- * User-visible text for a failed run. LangChain classifies provider errors by mutating
- * `error.message` with a docs URL, so a classified failure becomes typed copy the client localizes
- * and everything else keeps the provider's own wording with that URL removed. The untouched error
- * still reaches the logs through `getSafeErrorMetadata`.
- */
+/** Expose localized error codes under content protection and provider text only when allowed. */
 export function getUserFacingRequestError(
   baseMessage: string,
   error: unknown,

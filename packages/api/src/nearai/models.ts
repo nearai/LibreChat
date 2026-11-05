@@ -15,7 +15,6 @@ import type { TNearAIVerificationReport } from 'librechat-data-provider';
 import { detachOnAbort } from '~/utils/promises';
 import { createFailureReport } from './report';
 
-/** Fetch fresh evidence only when the model report is opened or explicitly refreshed. */
 export async function verifyModelReports(
   client: Pick<
     AttestationClient,

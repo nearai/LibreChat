@@ -10,12 +10,10 @@ import Viewer from './Viewer';
 export default function Verification({
   endpoint,
   receipts,
-  darkMode,
   onClose,
 }: {
   endpoint?: string | null;
   receipts: TNearAIReceipt[];
-  darkMode: boolean;
   onClose: () => void;
 }) {
   const localize = useLocalize();
@@ -25,66 +23,50 @@ export default function Verification({
   const reply = replyReport(receipt);
   const model = reply?.model ?? receipt.model;
   const params = replyEnvironment(endpoint, receipt);
-  const enabled = !!params;
-  const environment = useQuery({
+  const query = useQuery({
     ...reportQueryOptions(queryClient, params ?? { endpoint: endpoint ?? '', model }),
-    enabled,
+    enabled: !!params,
   });
   const failureMessage = localize('com_ui_nearai_environment_unavailable');
-  const reports = useMemo(() => {
+  const environment = params ? query : undefined;
+  const hardware =
+    environment?.data?.enabled && !environment.isError ? environment.data.reports : undefined;
+  let unavailableAt: number | undefined;
+  if (environment?.isError) unavailableAt = environment.errorUpdatedAt;
+  else if (environment?.data && !hardware?.length) unavailableAt = environment.dataUpdatedAt;
+  const reports = useMemo<TNearAIVerificationReport[] | undefined>(() => {
     if (!reply) return;
-    if (!enabled) return [reply];
-    if (
-      !environment.isError &&
-      environment.data?.enabled === true &&
-      environment.data.reports?.length
-    ) {
-      return combineReplyReports(reply, environment.data.reports);
-    }
-    if (!environment.isError && !environment.data) return [reply];
-    // A failed report request is not evidence about an additional hardware replica.
-    const unavailable: TNearAIVerificationReport = {
-      schemaVersion: 1,
-      kind: 'model',
-      model,
-      scope: 'unknown',
-      status: 'unverifiable',
-      verifiedAt: new Date(environment.errorUpdatedAt || environment.dataUpdatedAt).toISOString(),
-      error: { code: 'nearai_environment_unavailable', message: failureMessage },
-    };
-    return combineReplyReports(reply, [unavailable]);
-  }, [
-    reply,
-    enabled,
-    environment.data,
-    environment.isError,
-    environment.errorUpdatedAt,
-    environment.dataUpdatedAt,
-    model,
-    failureMessage,
-  ]);
+    if (hardware?.length) return combineReplyReports(reply, hardware);
+    if (unavailableAt == null) return [reply];
+    return [
+      reply,
+      {
+        schemaVersion: 1,
+        kind: 'model',
+        model,
+        scope: 'unknown',
+        status: 'unverifiable',
+        verifiedAt: new Date(unavailableAt).toISOString(),
+        error: { code: 'nearai_environment_unavailable', message: failureMessage },
+      },
+    ];
+  }, [reply, hardware, unavailableAt, model, failureMessage]);
   return (
     <Viewer
       model={model}
       reports={reports}
-      hardwareVerifiedAt={
-        !environment.isError && environment.data?.enabled
-          ? hardwareVerifiedAt(environment.data.reports)
-          : undefined
-      }
+      hardwareVerifiedAt={hardwareVerifiedAt(hardware)}
       receipt={receipt}
-      darkMode={darkMode}
       onClose={onClose}
-      pending={enabled && (environment.isLoading || environment.isFetching)}
+      pending={environment?.isLoading || environment?.isFetching}
       onVerify={
-        enabled && environment.data?.enabled !== false
-          ? () => {
-              void environment.refetch();
-            }
+        environment && environment.data?.enabled !== false
+          ? () => void environment.refetch()
           : undefined
       }
-      verifyLabel={localize('com_ui_nearai_hardware_verify_again')}
-      description={enabled ? localize('com_ui_nearai_verification_response') : undefined}
+      descriptionKey={
+        environment ? 'com_ui_nearai_verification_response' : 'com_ui_nearai_verification_snapshot'
+      }
     >
       {receipts.length > 1 && (
         <SelectDropDown

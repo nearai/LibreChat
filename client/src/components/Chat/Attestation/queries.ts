@@ -11,7 +11,7 @@ function gatewayReport(data?: TNearAIAttestationResponse): boolean {
   );
 }
 
-export function reportKey(params: Pick<TNearAIAttestationParams, 'endpoint' | 'model'>) {
+function reportKey(params: Pick<TNearAIAttestationParams, 'endpoint' | 'model'>) {
   return [QueryKeys.nearaiAttestation, params.endpoint, params.model, 'reports'];
 }
 
@@ -24,21 +24,19 @@ export function reportQueryOptions(
   // Metadata normalizes External/Chutes reports to Gateway scope on the server.
   const gateway = params.scope === 'gateway' && !gatewayReport(full?.data);
   const key = gateway ? [...queryKey, 'gateway'] : queryKey;
-  const cached = client.getQueryState<TNearAIAttestationResponse>(key);
+  const cached = gateway ? client.getQueryState<TNearAIAttestationResponse>(key) : full;
   return {
     queryKey: key,
     queryFn: async ({ signal }: QueryFunctionContext): Promise<TNearAIAttestationResponse> => {
       if (gateway && client.isFetching({ queryKey, exact: true })) {
-        try {
-          const reports = await client.fetchQuery(
-            reportQueryOptions(client, { endpoint: params.endpoint, model: params.model }),
-          );
-          signal?.throwIfAborted();
-          if (gatewayReport(reports)) return reports;
-        } catch {
-          // A failed shared request must not prevent an independent Gateway check.
-          signal?.throwIfAborted();
-        }
+        // If the shared request fails, fall back to an independent Gateway check.
+        const fullOptions = reportQueryOptions(client, {
+          endpoint: params.endpoint,
+          model: params.model,
+        });
+        const reports = await client.fetchQuery(fullOptions).catch(() => undefined);
+        signal?.throwIfAborted();
+        if (reports && gatewayReport(reports)) return reports;
       }
       return dataService.getNearAIAttestation({ ...params, reports: true }, signal);
     },

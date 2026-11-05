@@ -2,7 +2,6 @@
   "com_ui_nearai_hardware_checked_at": "Hardware checked at",
   "com_ui_nearai_verification_response": "Saved reply signature with hardware verification.",
   "com_ui_nearai_environment_unavailable": "Current hardware verification is unavailable. The saved reply signature result is unchanged.",
-  "com_ui_nearai_hardware_verify_again": "Verify again",
   "com_ui_nearai_verification_model": "Hardware verification.",
   "com_ui_nearai_shield_gateway": "NEAR AI Gateway verified; model execution is not attested",
   "com_ui_nearai_model_verification_title": "Model verification",

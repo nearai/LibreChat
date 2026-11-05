@@ -1,3 +1,4 @@
+import { hasVerifiedReports } from 'librechat-data-provider';
 import type {
   TMessage,
   TNearAIReceipt,
@@ -43,16 +44,8 @@ export function reportStaleTime(
   data: TNearAIAttestationResponse | undefined,
   queryStatus?: QueryStatus,
 ): number {
-  if (
-    queryStatus === 'error' ||
-    !data?.enabled ||
-    data.status === 'failed' ||
-    !data.reports?.length ||
-    data.reports.some((entry) => entry.status !== 'verified' && entry.status !== 'partial')
-  ) {
-    return 0;
-  }
-  return 5 * 60 * 1000;
+  if (queryStatus === 'error' || !data?.enabled || data.status === 'failed') return 0;
+  return hasVerifiedReports(data.reports) ? 5 * 60 * 1000 : 0;
 }
 
 export function hardwareVerifiedAt(reports?: TNearAIVerificationReport[]): string | undefined {

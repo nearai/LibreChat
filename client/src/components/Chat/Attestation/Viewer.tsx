@@ -5,6 +5,7 @@ import {
   Button,
   Spinner,
   Skeleton,
+  useTheme,
   OGDialogTitle,
   OGDialogHeader,
   OGDialogContent,
@@ -28,9 +29,7 @@ export default function Viewer({
   pending = false,
   isError = false,
   onVerify,
-  verifyLabel,
-  description,
-  darkMode,
+  descriptionKey = 'com_ui_nearai_verification_model',
   onClose,
   children,
 }: {
@@ -41,9 +40,7 @@ export default function Viewer({
   pending?: boolean;
   isError?: boolean;
   onVerify?: () => void;
-  verifyLabel?: string;
-  description?: string;
-  darkMode: boolean;
+  descriptionKey?: TranslationKeys;
   onClose: () => void;
   children?: ReactNode;
 }) {
@@ -52,6 +49,7 @@ export default function Viewer({
   const hour12 = useClockFormat();
   const checkedAt = getMessageTimestamp(hardwareVerifiedAt, i18n.language, hour12);
   const query = useGetStartupConfig();
+  const { resolvedMode } = useTheme();
   // The dialog portal may mount after this component's first effect.
   const [iframe, setIframe] = useState<HTMLIFrameElement | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -62,16 +60,18 @@ export default function Viewer({
       const url = verificationViewerUrl(query.data.nearaiVerifyUrl);
       url.search = new URLSearchParams({
         model,
-        darkMode: String(darkMode),
+        darkMode: String(resolvedMode === 'dark'),
         showHeader: 'false',
       }).toString();
       return url.href;
     } catch {
       return;
     }
-  }, [query.data?.nearaiVerifyUrl, model, darkMode]);
+  }, [query.data?.nearaiVerifyUrl, model, resolvedMode]);
+  const canShowReport = !!reports?.length && !!viewerUrl && !isError;
+  const showFrame = canShowReport && !pending;
   useEffect(() => {
-    if (!iframe || !reports?.length || !viewerUrl || pending || isError) return;
+    if (!iframe || !showFrame) return;
     setState('loading');
     try {
       return connectVerificationReport({
@@ -85,16 +85,14 @@ export default function Viewer({
     } catch {
       setState('error');
     }
-  }, [iframe, reports, viewerUrl, pending, isError, onClose]);
+  }, [iframe, reports, viewerUrl, showFrame, onClose]);
 
+  const unavailable = !canShowReport || state === 'error';
   let status: TranslationKeys = 'com_ui_nearai_viewer_unavailable';
   if (isError) status = 'com_ui_nearai_shield_unavailable';
   else if (!reports?.length && receipt) status = 'com_ui_nearai_verification_legacy';
-  else if (query.isError || (query.data && !viewerUrl) || !reports?.length)
-    status = 'com_ui_nearai_viewer_unavailable';
-  else if (state === 'error') status = 'com_ui_nearai_viewer_error';
-  const unavailable = !reports?.length || !viewerUrl || isError || state === 'error';
-  const showFrame = !!reports?.length && !!viewerUrl && !pending && !isError;
+  else if (canShowReport && !query.isError && state === 'error')
+    status = 'com_ui_nearai_viewer_error';
   const loading = pending || (!isError && query.isLoading) || (showFrame && state === 'loading');
   const link =
     viewerUrl && unavailable && receipt ? receiptVerifyLink(viewerUrl, receipt) : undefined;
@@ -109,12 +107,7 @@ export default function Viewer({
               : 'com_ui_nearai_model_verification_title',
           )}
         </OGDialogTitle>
-        <OGDialogDescription className="sr-only">
-          {description ??
-            localize(
-              onVerify ? 'com_ui_nearai_verification_model' : 'com_ui_nearai_verification_snapshot',
-            )}
-        </OGDialogDescription>
+        <OGDialogDescription className="sr-only">{localize(descriptionKey)}</OGDialogDescription>
       </OGDialogHeader>
       {!loading && !unavailable && checkedAt && (
         <p className="text-text-secondary text-xs">
@@ -139,25 +132,8 @@ export default function Viewer({
                 </div>
                 <Skeleton className="h-6 w-20 rounded-full" />
               </div>
-              {receipt ? (
-                <div className="space-y-4">
-                  <Skeleton className="h-4 w-48 max-w-full" />
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                </div>
-              ) : (
-                <>
-                  <Skeleton className="h-10 w-full" />
-                  <div className="grid grid-cols-2 gap-6">
-                    {Array.from({ length: 4 }, (_, index) => (
-                      <div key={index} className="space-y-2">
-                        <Skeleton className="h-3 w-20 max-w-full" />
-                        <Skeleton className="h-4 w-28 max-w-full" />
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
+              <Skeleton className="h-4 w-48 max-w-full" />
+              <Skeleton className="h-12 w-full" />
             </div>
             <p className="text-text-secondary flex items-center justify-center gap-2 text-sm">
               <Spinner className="shrink-0" size={16} />
@@ -198,7 +174,7 @@ export default function Viewer({
             )}
           </div>
         )}
-        {showFrame ? (
+        {showFrame && (
           <iframe
             key={`${model}:${receipt?.completionId ?? ''}:${attempt}`}
             ref={setIframe}
@@ -211,13 +187,13 @@ export default function Viewer({
             aria-hidden={loading}
             className="-mx-theme-dialog-x min-h-0 flex-1 border-0 sm:mx-0"
           />
-        ) : null}
+        )}
       </div>
       {onVerify && (
         <div className="border-border-light flex shrink-0 justify-end border-t pt-3">
           <Button variant="ghost" size="sm" disabled={pending} onClick={onVerify}>
             <RotateCw className="size-4" aria-hidden="true" />
-            {verifyLabel ?? localize('com_ui_nearai_shield_verify_again')}
+            {localize('com_ui_nearai_shield_verify_again')}
           </Button>
         </div>
       )}

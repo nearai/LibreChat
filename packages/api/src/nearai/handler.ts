@@ -1,5 +1,5 @@
 import { logger } from '@librechat/data-schemas';
-import { EModelEndpoint, extractEnvVariable } from 'librechat-data-provider';
+import { EModelEndpoint, extractEnvVariable, hasVerifiedReports } from 'librechat-data-provider';
 import type { TStartupConfig } from 'librechat-data-provider';
 import type { AppConfig } from '@librechat/data-schemas';
 import type { Response } from 'express';
@@ -27,14 +27,7 @@ export function getNearAIVerificationConfig(
   };
 }
 
-/**
- * GET /api/nearai/attestation?endpoint=<name>&model=<id>[&refresh=1][&reports=1]
- * `reports=1` fetches fresh display reports; the default reuses Chat's SDK cache.
- * `scope=gateway` checks Gateway evidence only, for Gateway-signed replies.
- * Verifies the NEAR AI Gateway and model deployment with the inference SDK.
- * Non-NEAR endpoints answer `{ enabled: false }` so the client can hide the shield.
- * `refresh=1` also resets Chat's SDK session to use the current deployment key.
- */
+/** `reports=1` fetches display evidence; `refresh=1` also resets the chat SDK session. */
 export async function nearAIAttestationHandler(
   req: Pick<ServerRequest, 'query' | 'config'> & { user?: { id: string } },
   res: Response,
@@ -64,11 +57,8 @@ export async function nearAIAttestationHandler(
       scope,
       refresh: refresh === '1',
     });
-    const verified =
-      reports.length > 0 &&
-      reports.every((report) => ['verified', 'partial'].includes(report.status));
     let status = 'failed';
-    if (verified)
+    if (hasVerifiedReports(reports))
       status = reports.some((report) => report.scope === 'model') ? 'verified' : 'partial';
     return res.json({
       enabled: true,
