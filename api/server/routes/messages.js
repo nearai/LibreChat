@@ -27,6 +27,7 @@ const {
   mergeUserSubmittedMessageFieldPaths,
   isContentFilterError,
   withoutTraceRefs,
+  withoutNearAIReceipts,
   createPrivateTextView,
   stripPrivateMessageFields,
   applyForcedRetention,
@@ -572,7 +573,9 @@ router.post('/:conversationId', storedMessageMutationMiddleware, async (req, res
       return;
     }
     /** Trace sampling fields are ownership claims only the server writes. */
-    const message = withoutTraceRefs({ ...req.body, conversationId: req.params.conversationId });
+    const message = withoutTraceRefs(
+      withoutNearAIReceipts({ ...req.body, conversationId: req.params.conversationId }),
+    );
     delete message.isUserSubmitted;
     delete message.userSubmittedPaths;
     delete message.userSubmittedMessageFieldPaths;

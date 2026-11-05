@@ -4,6 +4,7 @@ import {
   parseLangChainErrorCode,
   stripLangChainTroubleshootingUrl,
 } from 'librechat-data-provider';
+import { hasModelBoundContentProtection } from '~/middleware/modelBoundContent';
 import { ScheduledMCPPolicyError } from '~/schedules/authorization/policy';
 import { MCPErrorCodes, isMCPInitializationError } from '~/mcp/errors';
 import { OboTokenResolutionError } from '~/mcp/oauth/obo';
@@ -163,6 +164,73 @@ export function resolveModelStreamError(error: unknown): string | undefined {
   return failure == null
     ? undefined
     : `${MODEL_STREAM_FALLBACK[failure]}\n${JSON.stringify({ type: MODEL_STREAM_ERROR_TYPES[failure] })}`;
+}
+
+function isNearAIAttestationFailure(error: unknown): boolean {
+  let current = error;
+  for (let depth = 0; depth < MAX_CAUSE_DEPTH && current != null; depth++) {
+    if (typeof current !== 'object') {
+      return false;
+    }
+    const body = readErrorProperty(current, 'error');
+    if (
+      readErrorProperty(current, 'type') === ErrorTypes.NEAR_AI_ATTESTATION_FAILED ||
+      (body != null &&
+        typeof body === 'object' &&
+        readErrorProperty(body, 'type') === ErrorTypes.NEAR_AI_ATTESTATION_FAILED)
+    ) {
+      return true;
+    }
+    current = readErrorProperty(current, 'cause');
+  }
+  return false;
+}
+
+/** Typed payload for a request NEAR AI verification blocked; it carries no provider text. */
+export function resolveNearAIAttestationError(error: unknown): string | undefined {
+  return isNearAIAttestationFailure(error)
+    ? `NEAR AI hardware verification did not pass, so the message was not sent. Try again.\n${JSON.stringify({ type: ErrorTypes.NEAR_AI_ATTESTATION_FAILED })}`
+    : undefined;
+}
+
+type ContentProtectionConfig = {
+  filters?: Parameters<typeof hasModelBoundContentProtection>[0];
+  messageFilter?: { pii?: Parameters<typeof hasModelBoundContentProtection>[1] };
+};
+
+/** Expose localized error codes under content protection and provider text only when allowed. */
+export function getUserFacingRequestError(
+  baseMessage: string,
+  error: unknown,
+  appConfig?: ContentProtectionConfig,
+): string {
+  const failure = error != null && typeof error === 'object' ? error : undefined;
+  /** Carries no model or user content, so it is safe under every filter. */
+  if (failure && readErrorProperty(failure, 'name') === 'ManualSummarizationSkippedError') {
+    return JSON.stringify({
+      type: ErrorTypes.COMPACTION_SKIPPED,
+      reason: readErrorProperty(failure, 'reason'),
+    });
+  }
+  /** Also content-free, so a blocked NEAR AI request is explained under every filter. */
+  const nearaiError = resolveNearAIAttestationError(error);
+  if (nearaiError != null) {
+    return nearaiError;
+  }
+  const rawMessage = failure ? readErrorProperty(failure, 'message') : undefined;
+  if (
+    hasModelBoundContentProtection(appConfig?.filters, appConfig?.messageFilter?.pii) ||
+    typeof rawMessage !== 'string' ||
+    !rawMessage
+  ) {
+    return baseMessage;
+  }
+  const typedError = resolveLangChainError(error);
+  if (typedError != null) {
+    return typedError;
+  }
+  const message = stripLangChainTroubleshootingUrl(rawMessage);
+  return message ? `${baseMessage}: ${message}` : baseMessage;
 }
 
 /**

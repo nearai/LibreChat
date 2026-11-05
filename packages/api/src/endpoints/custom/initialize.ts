@@ -335,6 +335,12 @@ export async function initializeCustom(
     });
     options.endpointTokenConfig = endpointTokenConfig;
   } else {
+    // NEAR AI's external OpenAI route rejects the otherwise standard user parameter.
+    const nearAI = !userProvidesURL && isNearAIBaseURL(baseURL);
+    const model = model_parameters?.model;
+    if (nearAI && typeof model === 'string' && model.startsWith('openai/')) {
+      clientOptions.dropParams = [...(endpointConfig.dropParams ?? []), 'user'];
+    }
     const finalClientOptions = {
       modelOptions,
       ...clientOptions,
@@ -345,8 +351,12 @@ export async function initializeCustom(
       options.endpointTokenConfig = endpointTokenConfig;
     }
     /** NEAR AI: Chat goes through the inference SDK, which verifies the deployment first. */
-    if (options?.configOptions != null && !userProvidesURL && isNearAIBaseURL(baseURL)) {
-      options.configOptions.fetch = createNearAIFetch({ apiKey, baseURL });
+    if (options?.configOptions != null && nearAI) {
+      options.configOptions.fetch = createNearAIFetch({
+        apiKey,
+        baseURL,
+        verificationTimeoutMs: appConfig?.config?.nearai?.verificationTimeoutMs,
+      });
     }
   }
 

@@ -7,6 +7,10 @@ jest.mock('@librechat/agents', () => ({
 }));
 
 jest.mock('@librechat/api', () => ({
+  withoutTraceRefs: jest.requireActual('../../../../packages/api/src/langfuse/trace')
+    .withoutTraceRefs,
+  withoutNearAIReceipts: jest.requireActual('../../../../packages/api/src/nearai/sanitize')
+    .withoutNearAIReceipts,
   prepareToolCallPreviews: jest.fn(() => (messages) => Promise.resolve(messages)),
   createToolCallPartHandler: jest.fn(() => (_req, res) => res.status(404).end()),
   rejectToolCallPreviewWrites: (_req, _res, next) => next(),

@@ -9,6 +9,7 @@ const {
 const { EModelEndpoint, Constants, Tools, openAISettings } = require('librechat-data-provider');
 const {
   withoutTraceRefs,
+  withoutNearAIReceipts,
   orderMessageLineage,
   createChatGptLineage,
   linkChatGptCitations,
@@ -66,7 +67,7 @@ function sanitizeImportedMessage(message) {
   const content = normalizeImportedArray(message.content);
   const attachments = normalizeImportedArray(message.attachments);
   /** Server-private run state and trace sampling records never come from an import. */
-  const importable = withoutTraceRefs({ ...message });
+  const importable = withoutTraceRefs(withoutNearAIReceipts(message));
   delete importable.contextMeta;
   delete importable.privateText;
   delete importable.privacyRevision;

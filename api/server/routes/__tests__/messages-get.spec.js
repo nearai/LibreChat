@@ -56,6 +56,8 @@ jest.mock('@librechat/api', () => {
     rejectToolCallPreviewWrites: (_req, _res, next) => next(),
     withMessageToolCallPreviews: (_req, message) => message,
     /** The real helper, without loading the rest of the package this suite mocks around. */
+    withoutNearAIReceipts: jest.requireActual('../../../../packages/api/src/nearai/sanitize')
+      .withoutNearAIReceipts,
     withoutTraceRefs: jest.requireActual('../../../../packages/api/src/langfuse/trace.ts')
       .withoutTraceRefs,
     createPrivateTextView: jest.fn(() => (_req, _res, next) => next()),

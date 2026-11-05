@@ -12,6 +12,7 @@ import type { TFileConfig } from './file-config';
 import type * as tl from './types/tools';
 import type * as t from './types';
 import { TOOL_CALL_PREVIEWS_PARAM, TOOL_CALL_PREVIEWS_VERSION } from './previews';
+import { MAX_NEAR_AI_VERIFICATION_TIMEOUT_MS } from './nearai';
 import * as permissions from './accessPermissions';
 import * as endpoints from './api-endpoints';
 import { uploadEventStream } from './upload';
@@ -297,12 +298,15 @@ export function getUserBalance(): Promise<t.TBalanceResponse> {
   return request.get(endpoints.balance());
 }
 
-export function getNearAIAttestation(params: {
-  endpoint: string;
-  model: string;
-  refresh?: boolean;
-}): Promise<t.TNearAIAttestationResponse> {
-  return request.get(endpoints.nearaiAttestation(params));
+export function getNearAIAttestation(
+  params: t.TNearAIAttestationParams,
+  signal?: AbortSignal,
+): Promise<t.TNearAIAttestationResponse> {
+  // Allow the maximum server deadline plus a short transport grace period.
+  return request.get(endpoints.nearaiAttestation(params), {
+    signal,
+    timeout: MAX_NEAR_AI_VERIFICATION_TIMEOUT_MS + 5000,
+  });
 }
 
 export const updateTokenCount = (text: string) => {

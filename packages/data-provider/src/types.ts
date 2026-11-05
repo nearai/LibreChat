@@ -23,6 +23,7 @@ import type {
 } from './config';
 import type { BalanceRefillMode, RefillIntervalUnit } from './balance';
 import type { StatefulCodeEnvironment } from './stateful-code';
+import type { TNearAIVerificationReport } from './nearai';
 import type { CodeApprovalMode } from './code/approval';
 import type { EToolResources } from './types/tools';
 import type { SettingDefinition } from './generate';
@@ -1250,18 +1251,25 @@ export type TUpdateFeedbackResponse = {
   feedback?: TMinimalFeedback;
 };
 
+export type TNearAIAttestationParams = {
+  endpoint: string;
+  model: string;
+  refresh?: boolean;
+  reports?: boolean;
+  scope?: 'gateway';
+};
+
 /** NEAR AI deployment attestation, verified server-side by the inference SDK. */
 export type TNearAIAttestationResponse =
   | { enabled: false }
   | {
       enabled: true;
       model: string;
-      status: 'verified' | 'failed';
+      status: 'verified' | 'partial' | 'failed';
+      scope?: 'model' | 'gateway';
       checkedAt: string;
       errorCode?: string;
-      message?: string;
-      /** NEAR AI verify page; the shields link to it with the model and receipts. */
-      verifyUrl?: string;
+      reports?: TNearAIVerificationReport[];
     };
 
 /** Signature check for one NEAR AI completion, saved on the reply's `metadata.nearai.receipts`. */
@@ -1276,6 +1284,8 @@ export type TNearAIReceipt = {
   signedText?: string;
   signature?: string;
   errorCode?: string;
+  /** Selected SDK verification evidence for the Cloud UI iframe; absent on older messages. */
+  report?: TNearAIVerificationReport;
 };
 
 export type TBalanceResponse = {

@@ -6,6 +6,7 @@ import {
   getModelStreamFailure,
   resolveModelStreamError,
   getProviderErrorMessage,
+  resolveNearAIAttestationError,
 } from '../errors';
 import { getSafeErrorMetadata, isOwnedAbortError } from '../../utils/errors';
 import { traceIdForMessage } from '../../langfuse/trace';
@@ -107,6 +108,7 @@ export function createTerminalRunErrorObserver({
 
       const { status } = getSafeErrorMetadata(upstreamModelError);
       const classifiedError =
+        resolveNearAIAttestationError(upstreamModelError) ??
         safelyResolveLangChainError(error) ??
         safelyResolveLangChainError(upstreamModelError) ??
         (status == null || status < 400
