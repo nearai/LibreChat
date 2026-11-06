@@ -354,8 +354,8 @@ function ReplyDetails({
   return (
     <>
       <div className="flex items-start gap-3">
-        <SealMark tone={seals[state].tone} glyph={seals[state].glyph} />
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <SealMark tone={seals[state].tone} glyph={seals[state].glyph} size={48} />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5 pt-1">
           <Ariakit.PopoverHeading
             className={cn('text-base leading-5.25 font-bold', titleColors[state])}
           >

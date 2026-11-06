@@ -4,9 +4,13 @@ import { dataService } from 'librechat-data-provider';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { TNearAIAttestationResponse } from 'librechat-data-provider';
+import { BADGE_200, SEAL_BAND, SEAL_ROSE } from '../geometry';
 import Shield from '../Shield';
 
 const MODEL = 'z-ai/glm-5.3-flash';
+
+const drawnPaths = (seal: HTMLElement) =>
+  Array.from(seal.querySelectorAll('path')).map((path) => path.getAttribute('d'));
 
 /** The HTTP boundary: a plain copy of `dataService` so its request can be spied on. */
 jest.mock('librechat-data-provider', () => {
@@ -76,6 +80,44 @@ describe('Shield', () => {
       'href',
       `https://cloud.near.ai/verify?model=${encodeURIComponent(MODEL)}`,
     );
+  });
+
+  it('draws the detailed seal at 56 px once the model verifies', async () => {
+    getAttestation.mockResolvedValueOnce(verified);
+    renderShield();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'NEAR AI proof: Verified' }));
+    const seal = within(await screen.findByRole('dialog')).getByTestId('proof-seal');
+
+    expect(seal).toHaveStyle({ width: '56px', height: '56px' });
+    expect(drawnPaths(seal)).toEqual(expect.arrayContaining([SEAL_BAND, SEAL_ROSE]));
+    expect(seal.querySelector('circle')).toBeNull();
+  });
+
+  it('draws a dashed ring, not the strands, while nothing is verified', async () => {
+    getAttestation.mockReturnValueOnce(new Promise(() => undefined));
+    renderShield();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'NEAR AI proof: Checking' }));
+    const seal = within(await screen.findByRole('dialog')).getByTestId('proof-seal');
+
+    expect(seal).toHaveStyle({ width: '56px', height: '56px' });
+    expect(drawnPaths(seal)).not.toContain(SEAL_BAND);
+    expect(drawnPaths(seal)).not.toContain(SEAL_ROSE);
+    /** A badge this small has no room for the spinner to read as one. */
+    expect(drawnPaths(seal)).not.toContain(BADGE_200);
+    expect(seal.querySelector('circle')).toHaveAttribute('stroke-dasharray', '3 4');
+  });
+
+  it('draws no strands when the check failed', async () => {
+    getAttestation.mockResolvedValueOnce({ ...verified, status: 'failed', errorCode: 'tdx.quote' });
+    renderShield();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'NEAR AI proof: Check failed' }));
+    const seal = within(await screen.findByRole('dialog')).getByTestId('proof-seal');
+
+    expect(drawnPaths(seal)).not.toContain(SEAL_BAND);
+    expect(seal.querySelector('circle')).toHaveAttribute('stroke-dasharray', '3 4');
   });
 
   it('keeps the status word visible after verifying', async () => {

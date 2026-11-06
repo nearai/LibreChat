@@ -1,8 +1,17 @@
 import { memo } from 'react';
-import { BADGE_200, DASH_PATH, CHECK_PATH, CLOCK_PATH, CROSS_PATH, PENCIL_PATH } from './geometry';
+import {
+  BADGE_200,
+  DASH_PATH,
+  SEAL_BAND,
+  SEAL_ROSE,
+  CHECK_PATH,
+  CLOCK_PATH,
+  CROSS_PATH,
+  PENCIL_PATH,
+} from './geometry';
 import { cn } from '~/utils';
 
-/** `none` has no seal to show: it draws a dashed ring instead. */
+/** `none` has no seal to show: it draws no badge, only the dashed ring and its glyph. */
 export type SealTone = 'positive' | 'caution' | 'critical' | 'neutral' | 'none';
 
 export type SealGlyph = 'check' | 'clock' | 'pencil' | 'cross' | 'dash' | 'spinner';
@@ -159,23 +168,34 @@ const glyphColors: Record<SealTone, string> = {
 };
 
 const sealGlyphs: Record<Exclude<SealGlyph, 'spinner'>, { d: string; width: number }> = {
-  check: { d: CHECK_PATH, width: 1.4 },
-  clock: { d: CLOCK_PATH, width: 1 },
-  pencil: { d: PENCIL_PATH, width: 1 },
-  cross: { d: CROSS_PATH, width: 1.4 },
-  dash: { d: DASH_PATH, width: 1.4 },
+  check: { d: CHECK_PATH, width: 1.7 },
+  clock: { d: CLOCK_PATH, width: 1.2 },
+  pencil: { d: PENCIL_PATH, width: 1.2 },
+  cross: { d: CROSS_PATH, width: 1.7 },
+  dash: { d: DASH_PATH, width: 1.7 },
 };
 
-/** The fixed seal at popover size, with the glyph that says what its status is. */
+/** Strand colors for the tones with a signature or evidence behind them. */
+const strandStyles: Partial<Record<SealTone, { band: string; rose: string }>> = {
+  positive: { band: 'stroke-status-success-strong', rose: 'stroke-status-info' },
+  caution: { band: 'stroke-status-warning-strong', rose: 'stroke-status-warning-strong' },
+};
+
+/**
+ * The detailed seal for popovers, 48-64 px: the badge and the glyph that says what its
+ * status is, inside the woven strands. A status with nothing verified behind it draws a
+ * dashed ring instead, so it never borrows a seal it has not earned.
+ */
 export const SealMark = memo(function SealMark({
   tone,
   glyph,
-  size = 40,
+  size = 56,
 }: {
   tone: SealTone;
   glyph: SealGlyph;
   size?: number;
 }) {
+  const strands = strandStyles[tone];
   return (
     <svg
       viewBox="-100 -100 200 200"
@@ -183,10 +203,26 @@ export const SealMark = memo(function SealMark({
       fill="none"
       strokeLinecap="round"
       strokeLinejoin="round"
+      data-testid="proof-seal"
       className={cn('animate-proof-stamp shrink-0 motion-reduce:animate-none', glyphColors[tone])}
       style={{ width: size, height: size }}
     >
-      {tone === 'none' ? (
+      {strands ? (
+        <>
+          <path
+            d={SEAL_BAND}
+            strokeWidth={0.9}
+            vectorEffect="non-scaling-stroke"
+            className={strands.band}
+          />
+          <path
+            d={SEAL_ROSE}
+            strokeWidth={0.9}
+            vectorEffect="non-scaling-stroke"
+            className={strands.rose}
+          />
+        </>
+      ) : (
         <circle
           r="84"
           strokeWidth={1.2}
@@ -194,31 +230,34 @@ export const SealMark = memo(function SealMark({
           vectorEffect="non-scaling-stroke"
           className="stroke-border-medium"
         />
-      ) : (
-        <path
-          d={BADGE_200}
-          strokeWidth={1.2}
-          vectorEffect="non-scaling-stroke"
-          className={sealStyles[tone]}
-        />
       )}
-      {glyph === 'spinner' ? (
-        <g transform="translate(-40 -40) scale(5)">
+      <g transform="scale(0.4)">
+        {tone !== 'none' && (
           <path
-            d="M8 2.5a5.5 5.5 0 1 1-5.5 5.5"
-            stroke="currentColor"
-            strokeWidth={1.8}
-            className={cn(ownBox, 'animate-spin motion-reduce:animate-none')}
+            d={BADGE_200}
+            strokeWidth={1.2}
+            vectorEffect="non-scaling-stroke"
+            className={sealStyles[tone]}
           />
-        </g>
-      ) : (
-        <path
-          d={sealGlyphs[glyph].d}
-          transform={BADGE_BOX}
-          stroke="currentColor"
-          strokeWidth={sealGlyphs[glyph].width}
-        />
-      )}
+        )}
+        {glyph === 'spinner' ? (
+          <g transform={BADGE_BOX}>
+            <path
+              d="M8 2.5a5.5 5.5 0 1 1-5.5 5.5"
+              stroke="currentColor"
+              strokeWidth={1.8}
+              className={cn(ownBox, 'animate-spin motion-reduce:animate-none')}
+            />
+          </g>
+        ) : (
+          <path
+            d={sealGlyphs[glyph].d}
+            transform={BADGE_BOX}
+            stroke="currentColor"
+            strokeWidth={sealGlyphs[glyph].width}
+          />
+        )}
+      </g>
     </svg>
   );
 });
