@@ -196,6 +196,33 @@ describe('EditContentParts', () => {
     expect(enterEdit).toHaveBeenCalledWith(true);
   });
 
+  /** Writing the save to the cache makes the messages query drop the refetch the save
+   *  started, so this is the only way the record of the edit reaches the open thread. */
+  it("keeps the server's record of the edit from the save's response", async () => {
+    mockMutateAsync.mockResolvedValue({ userSubmittedPaths: ['/content/0/text'] });
+    message.content = content;
+    render(
+      <EditContentParts
+        content={content}
+        messageId={message.messageId}
+        isSubmitting={false}
+        enterEdit={jest.fn()}
+        siblingIdx={0}
+        setSiblingIdx={jest.fn()}
+        renderReadOnlyPart={() => null}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Updated response' } });
+    fireEvent.click(screen.getByRole('button', { name: 'com_ui_save' }));
+
+    await waitFor(() => expect(mockSetMessages).toHaveBeenCalledTimes(1));
+    const saved = mockSetMessages.mock.calls[0][0] as TMessage[];
+    expect(saved.find((item) => item.messageId === message.messageId)?.userSubmittedPaths).toEqual([
+      '/content/0/text',
+    ]);
+  });
+
   it('clears the cached reasoning title when its reasoning text is edited', async () => {
     const reasoningContent = [
       {
@@ -454,7 +481,7 @@ describe('EditContentParts', () => {
     ] as TMessageContentParts[];
     message.content = multiPartContent;
     mockMutateAsync
-      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ userSubmittedPaths: ['/content/0/text'] })
       .mockRejectedValueOnce(new Error('the second write was refused'));
 
     render(
@@ -486,6 +513,7 @@ describe('EditContentParts', () => {
       { type: ContentTypes.TEXT, text: 'Updated first response' },
       { type: ContentTypes.TEXT, text: 'Second response' },
     ]);
+    expect(edited?.userSubmittedPaths).toEqual(['/content/0/text']);
 
     /** The refused part is the only one still holding an unsaved draft, so the editor
      *  stays open on it and a retry does not rewrite what already landed. */
