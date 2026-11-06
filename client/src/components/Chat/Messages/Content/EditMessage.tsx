@@ -3,6 +3,7 @@ import { useRecoilValue } from 'recoil';
 import { useForm } from 'react-hook-form';
 import { Alert, Button, TextareaAutosize } from '@librechat/client';
 import { useUpdateMessageMutation } from 'librechat-data-provider/react-query';
+import type { TMessage } from 'librechat-data-provider';
 import type { TEditProps } from '~/common';
 import { useMessagesOperations, useMessagesConversation } from '~/Providers';
 import { findRerunParent } from './rerunParent';
@@ -142,12 +143,12 @@ const EditMessage = ({
   const updateMessage = async (data: { text: string }) => {
     setSaveError(false);
     try {
-      await updateMessageMutation.mutateAsync({
+      const saved = (await updateMessageMutation.mutateAsync({
         conversationId: conversationId ?? '',
         model: conversation?.model ?? 'gpt-3.5-turbo',
         text: data.text,
         messageId,
-      });
+      })) as Pick<TMessage, 'userSubmittedPaths'> | undefined;
 
       /** Read the thread after the request, not before it. An earlier turn stays
        *  editable while the newest answer streams, so a snapshot taken before the
@@ -173,6 +174,11 @@ const EditMessage = ({
                   ...msg,
                   text: data.text,
                   privacyRevision: undefined,
+                  /** This write makes the messages query drop the refetch the save started,
+                   *  so the server's record of the edit has to come from the save's response. */
+                  ...(saved?.userSubmittedPaths && {
+                    userSubmittedPaths: saved.userSubmittedPaths,
+                  }),
                 }
               : msg,
           ),

@@ -7,7 +7,7 @@ import {
   findMessageById,
   stripReasoningLabelMetadata,
 } from 'librechat-data-provider';
-import type { TMessageContentParts } from 'librechat-data-provider';
+import type { TMessage, TMessageContentParts } from 'librechat-data-provider';
 import type { ReactNode } from 'react';
 import { useMessagesConversation, useMessagesOperations } from '~/Providers';
 import { getPartText, isEditablePart, withPartText } from './editableParts';
@@ -124,7 +124,7 @@ export default function EditContentParts({
   }, []);
 
   const applySavedParts = useCallback(
-    (savedParts: EditablePart[]) => {
+    (savedParts: EditablePart[], userSubmittedPaths?: string[]) => {
       const messages = getMessages();
       if (!messages || savedParts.length === 0) {
         return;
@@ -139,6 +139,9 @@ export default function EditContentParts({
           }
           return {
             ...currentMessage,
+            /** This write makes the messages query drop the refetch the save started, so
+             *  the server's record of the edit has to come from the save's own response. */
+            ...(userSubmittedPaths && { userSubmittedPaths }),
             content: currentMessage.content.map((part, localIndex) => {
               const change = changedByLocalIndex.get(localIndex);
               if (!part || !change || part.type !== change.type) {
@@ -170,22 +173,24 @@ export default function EditContentParts({
      *  landed lets the failure reconcile the transcript with the server instead of
      *  claiming nothing was saved, and leaves only the refused parts still edited. */
     const savedParts: EditablePart[] = [];
+    let userSubmittedPaths: string[] | undefined;
     try {
       /** Each endpoint call replaces the full content array. Keep writes ordered so a
        *  later edit reads the content produced by the previous one instead of racing it. */
       for (const part of changedParts) {
-        await updateMessageContentMutation.mutateAsync({
+        const saved = (await updateMessageContentMutation.mutateAsync({
           index: part.index,
           conversationId: conversation?.conversationId ?? '',
           text: drafts[part.index],
           messageId,
-        });
+        })) as Pick<TMessage, 'userSubmittedPaths'> | undefined;
+        userSubmittedPaths = saved?.userSubmittedPaths ?? userSubmittedPaths;
         savedParts.push(part);
       }
     } catch {
       setSaveError(true);
     } finally {
-      applySavedParts(savedParts);
+      applySavedParts(savedParts, userSubmittedPaths);
       setIsSaving(false);
     }
 

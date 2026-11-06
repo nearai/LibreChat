@@ -129,6 +129,24 @@ describe('EditMessage', () => {
     expect(enterEdit).toHaveBeenCalledWith(true);
   });
 
+  /** Writing the save to the cache makes the messages query drop the refetch the save
+   *  started, so this is the only way the record of the edit reaches the open thread. */
+  it("keeps the server's record of the edit from the save's response", async () => {
+    mockMutateAsync.mockResolvedValue({ userSubmittedPaths: ['/text'] });
+    const user = userEvent.setup();
+    renderEditor();
+
+    await user.clear(screen.getByTestId('message-text-editor'));
+    await user.type(screen.getByTestId('message-text-editor'), 'Updated message');
+    await user.click(screen.getByRole('button', { name: 'com_ui_save' }));
+
+    await waitFor(() =>
+      expect(mockSetMessages).toHaveBeenCalledWith([
+        expect.objectContaining({ text: 'Updated message', userSubmittedPaths: ['/text'] }),
+      ]),
+    );
+  });
+
   it('clears the private revision when a protected message is saved', async () => {
     const protectedMessage = { ...message, privacyRevision: 'previous-revision' };
     mockGetMessages.mockReturnValue([protectedMessage]);
