@@ -5,6 +5,7 @@ import { dataService, QueryKeys } from 'librechat-data-provider';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { TMessage, TNearAIReceipt } from 'librechat-data-provider';
+import { SEAL_BAND, SEAL_ROSE } from '../geometry';
 import Signature from '../Signature';
 
 const KEY = '5a0210f2442c79355784f9de021985429561da5bacc3a4424b01ac52b7e0caff';
@@ -12,6 +13,9 @@ const MODEL = 'z-ai/glm-5.3-flash';
 const REQUEST_HASH = 'eb04497ea35a7733b643a07fea5ddc544d3015ec5249303169946adb38653bac';
 const RESPONSE_HASH = '81c8a97038d2a8efb7f91a5c2e08fa35dead6b91194a1511d201244e2538fccc';
 const conversation = { endpoint: 'NEAR AI', model: MODEL };
+
+const drawnPaths = (seal: HTMLElement) =>
+  Array.from(seal.querySelectorAll('path')).map((path) => path.getAttribute('d'));
 
 /** The HTTP boundary: a plain copy of `dataService` so its request can be spied on. */
 jest.mock('librechat-data-provider', () => {
@@ -123,6 +127,44 @@ describe('Signature', () => {
       return seal;
     };
     expect(await outline(KEY)).toEqual(await outline('ab'.repeat(32)));
+  });
+
+  it.each([
+    ['Model signed', () => reply([receipt()])],
+    ['Gateway signed', () => reply([gatewayReceipt()])],
+    ['Edited after signing', () => reply([receipt()], { userSubmittedPaths: ['/text'] })],
+  ])('draws the detailed seal at 48 px on a reply reading %s', async (word, message) => {
+    renderSignature(message());
+
+    const seal = within(await openProof(word)).getByTestId('proof-seal');
+    expect(seal).toHaveStyle({ width: '48px', height: '48px' });
+    expect(drawnPaths(seal)).toEqual(expect.arrayContaining([SEAL_BAND, SEAL_ROSE]));
+    expect(seal.querySelector('circle')).toBeNull();
+  });
+
+  it.each([
+    [
+      'Check failed',
+      { status: 'failed', errorCode: 'signature.invalid', signature: undefined } as const,
+    ],
+    [
+      'Not signed',
+      {
+        status: 'failed',
+        errorCode: 'api.completion_signature_unavailable',
+        signatureKind: undefined,
+        signingAddress: undefined,
+        signedText: undefined,
+        signature: undefined,
+      } as const,
+    ],
+  ])('draws a dashed ring, not the strands, on a reply reading %s', async (word, overrides) => {
+    renderSignature(reply([receipt(overrides)]));
+
+    const seal = within(await openProof(word)).getByTestId('proof-seal');
+    expect(drawnPaths(seal)).not.toContain(SEAL_BAND);
+    expect(drawnPaths(seal)).not.toContain(SEAL_ROSE);
+    expect(seal.querySelector('circle')).toHaveAttribute('stroke-dasharray', '3 4');
   });
 
   it('names the Gateway when it signed, and says the model name is not covered', async () => {

@@ -39,7 +39,7 @@ const glyphStates: Record<DeploymentState, GlyphState> = {
 };
 
 const sealTones: Record<DeploymentState, SealTone> = {
-  checking: 'neutral',
+  checking: 'none',
   verified: 'positive',
   failed: 'critical',
   unavailable: 'none',
@@ -181,7 +181,7 @@ function Shield() {
       >
         <div className="flex items-start gap-3">
           <SealMark key={state} tone={sealTones[state]} glyph={sealGlyphs[state]} />
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5 pt-1.5">
             <Ariakit.PopoverHeading
               className={cn('text-base leading-5.25 font-bold', titleColors[state])}
             >
