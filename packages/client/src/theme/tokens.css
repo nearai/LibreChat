@@ -183,6 +183,8 @@
   --color-status-neutral-subtle: rgb(var(--status-neutral-subtle));
   --color-status-neutral-border: rgb(var(--status-neutral-border));
   --color-status-verified: rgb(var(--status-verified));
+  --color-status-proof: rgb(var(--status-proof));
+  --color-status-proof-subtle: rgb(var(--status-proof-subtle));
 
   /* The welcome screen's light, rising from the composer: a whole color, alpha included, from
      the `greetingGlow` appearance role, so a theme that sets none paints nothing. */

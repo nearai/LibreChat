@@ -1250,6 +1250,17 @@ export type TUpdateFeedbackResponse = {
   feedback?: TMinimalFeedback;
 };
 
+/** The checks behind a NEAR AI deployment proof: the Gateway, the model's Intel TDX CPU
+ *  enclave, its NVIDIA GPU evidence, and the model signing key and measurements. */
+export type TNearAIDeploymentCheck = 'gateway' | 'cpu' | 'gpu' | 'key';
+
+/**
+ * `not_provided`: the model's TEE supplied no evidence for the check, which the SDK's
+ * default policy accepts (only GPU evidence is optional). `not_checked`: verification
+ * ended before this check's result was known.
+ */
+export type TNearAICheckOutcome = 'passed' | 'failed' | 'not_provided' | 'not_checked';
+
 /** NEAR AI deployment attestation, verified server-side by the inference SDK. */
 export type TNearAIAttestationResponse =
   | { enabled: false }
@@ -1260,6 +1271,11 @@ export type TNearAIAttestationResponse =
       checkedAt: string;
       errorCode?: string;
       message?: string;
+      /** Outcome of each check. Absent from servers that predate it. */
+      checks?: Record<TNearAIDeploymentCheck, TNearAICheckOutcome>;
+      /** Intel's status for the model's platform, under the data set the SDK fetched. Absent
+       *  when the model's quotes disagree or the check did not pass. */
+      tcbStatus?: string;
       /** NEAR AI verify page; the shields link to it with the model and receipts. */
       verifyUrl?: string;
     };

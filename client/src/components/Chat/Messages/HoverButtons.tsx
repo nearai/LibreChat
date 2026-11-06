@@ -199,6 +199,15 @@ const HoverButtons = ({
 
   return (
     <div className="group visible flex justify-center gap-0.5 self-end focus-within:outline-hidden lg:justify-start">
+      {/* NEAR AI reply proof: always shown, and waits as "Signing" while the reply streams */}
+      {!isCreatedByUser && (
+        <ReplySignature
+          message={message}
+          conversation={conversation}
+          isStreaming={isActiveStreamingMessage}
+        />
+      )}
+
       {/* Text to Speech */}
       {TextToSpeech && !error && !isActiveStreamingMessage && speechText.length > 0 && (
         <MessageAudio
@@ -261,11 +270,6 @@ const HoverButtons = ({
           getLatestMessageId={getLatestMessageId ?? (() => latestMessageId)}
           isLast={isLast}
         />
-      )}
-
-      {/* NEAR AI reply signature */}
-      {!isActiveStreamingMessage && !isCreatedByUser && (
-        <ReplySignature message={message} isLast={isLast} />
       )}
 
       {/* Feedback Buttons */}

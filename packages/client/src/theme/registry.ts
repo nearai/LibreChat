@@ -207,6 +207,32 @@ export function focusFallbacks(colors: IThemeRGB): IThemeRGB {
   };
 }
 
+/**
+ * The proof pair for a theme that painted the success text or fill a proof wore
+ * before it had roles of its own. Both halves follow that success pair, so a
+ * theme's own success colors never sit beside the bundled proof green; `base`
+ * supplies whichever half the theme inherited. A proof role the theme names is
+ * kept, and a theme that painted neither success role takes the bundled pair.
+ */
+export function proofFallbacks(colors: IThemeRGB, base: IThemeRGB): IThemeRGB {
+  if (
+    colors['rgb-status-success'] === undefined &&
+    colors['rgb-status-success-subtle'] === undefined
+  ) {
+    return {};
+  }
+  const text = colors['rgb-status-success'] ?? base['rgb-status-success'];
+  const fill = colors['rgb-status-success-subtle'] ?? base['rgb-status-success-subtle'];
+  return {
+    ...(colors['rgb-status-proof'] === undefined && text !== undefined
+      ? { 'rgb-status-proof': text }
+      : {}),
+    ...(colors['rgb-status-proof-subtle'] === undefined && fill !== undefined
+      ? { 'rgb-status-proof-subtle': fill }
+      : {}),
+  };
+}
+
 export const themeAppearanceProperties: Readonly<
   Record<keyof IThemeAppearance, `--theme-${string}`>
 > = Object.freeze({
@@ -777,6 +803,8 @@ export function resolveTheme(theme: ThemeDefinition, mode: ThemeMode): ResolvedT
   const layerFallback: IThemeRGB =
     customColors != null ? layerRoleFallbacks(customColors, mode) : {};
   const focusFallback: IThemeRGB = customColors != null ? focusFallbacks(customColors) : {};
+  const proofFallback: IThemeRGB =
+    customColors != null ? proofFallbacks(customColors, baseColors) : {};
   const pressedFallback: IThemeRGB = customColors != null ? pressedFallbacks(customColors) : {};
   const primaryButtonFallback: IThemeRGB =
     customColors != null ? primaryButtonFallbacks(customColors) : {};
@@ -855,6 +883,7 @@ export function resolveTheme(theme: ThemeDefinition, mode: ThemeMode): ResolvedT
       ...tableHeaderFillFallback,
       ...borderControlFallback,
       ...focusFallback,
+      ...proofFallback,
       ...pressedFallback,
       ...primaryButtonFallback,
       ...primaryInks,

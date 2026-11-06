@@ -171,6 +171,8 @@ export const highContrastLightTheme: IThemeRGB = {
   /** Verified mark: the mode's one blue, 10.31:1 under the white check and the
    *  same against the canvas. */
   'rgb-status-verified': '0 65 122', // #00417a
+  'rgb-status-proof': '0 92 46', // #005c2e (status-success)
+  'rgb-status-proof-subtle': '255 255 255', // #ffffff (status-success-subtle)
   'rgb-text-on-status': '255 255 255', // #ffffff
 
   // Brand colors
@@ -373,6 +375,8 @@ export const highContrastDarkTheme: IThemeRGB = {
   /** Verified mark: the mode's one blue, 11.82:1 under the black check and the
    *  same against the canvas. */
   'rgb-status-verified': '140 200 255', // #8cc8ff
+  'rgb-status-proof': '127 240 179', // #7ff0b3 (status-success)
+  'rgb-status-proof-subtle': '0 0 0', // #000000 (status-success-subtle)
   'rgb-text-on-status': '0 0 0', // #000000
 
   // Brand colors

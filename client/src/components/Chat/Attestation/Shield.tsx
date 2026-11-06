@@ -1,27 +1,97 @@
-import { memo, useRef } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import * as Ariakit from '@ariakit/react';
+import { ArrowUpRight, RefreshCw, X } from 'lucide-react';
+import { Button, buttonVariants } from '@librechat/client';
 import { dataService, QueryKeys } from 'librechat-data-provider';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { TooltipAnchor, chromeIconButtonClasses } from '@librechat/client';
-import { ExternalLink, Loader2, RefreshCw, ShieldAlert, ShieldCheck, X } from 'lucide-react';
 import type { TNearAIAttestationResponse } from 'librechat-data-provider';
+import type { DeploymentCheck, DeploymentReport, DeploymentState } from './proof';
+import type { GlyphState, SealGlyph, SealTone } from './Seal';
+import type { CheckRow } from './CheckList';
+import {
+  DEPLOYMENT_CHECKS,
+  isCheckFailure,
+  deploymentState,
+  formatCheckedAt,
+  deploymentChecks,
+  failedDeploymentCheck,
+} from './proof';
 import { useNearAIAttestationQuery } from '~/data-provider/Misc/queries';
+import { ProofGlyph, SealMark } from './Seal';
 import { useChatContext } from '~/Providers';
 import { modelVerifyLink } from './links';
 import { useLocalize } from '~/hooks';
+import CheckList from './CheckList';
 import { cn } from '~/utils';
 
-type ShieldState = 'checking' | 'verified' | 'failed';
-
-const icons = { checking: Loader2, verified: ShieldCheck, failed: ShieldAlert } as const;
-
-const iconColors: Record<ShieldState, string> = {
-  checking: 'text-text-secondary animate-spin motion-reduce:animate-none',
-  verified: 'text-status-success',
-  failed: 'text-status-error',
+const pillTones: Record<DeploymentState, string> = {
+  checking: 'bg-status-neutral-subtle text-text-secondary',
+  verified: 'bg-status-proof-subtle text-status-proof',
+  failed: 'bg-status-error-subtle text-status-error ring-1 ring-inset ring-status-error',
+  unavailable: 'bg-status-neutral-subtle text-text-secondary',
 };
 
-/** Header shield for NEAR AI endpoints: the server verifies the deployment with the inference SDK. */
+const glyphStates: Record<DeploymentState, GlyphState> = {
+  checking: 'checking',
+  verified: 'verified',
+  failed: 'failed',
+  unavailable: 'none',
+};
+
+const sealTones: Record<DeploymentState, SealTone> = {
+  checking: 'neutral',
+  verified: 'positive',
+  failed: 'critical',
+  unavailable: 'none',
+};
+
+const sealGlyphs: Record<DeploymentState, SealGlyph> = {
+  checking: 'spinner',
+  verified: 'check',
+  failed: 'cross',
+  unavailable: 'dash',
+};
+
+const titleColors: Record<DeploymentState, string> = {
+  checking: 'text-text-primary',
+  verified: 'text-status-proof',
+  failed: 'text-status-error',
+  unavailable: 'text-text-primary',
+};
+
+const words = {
+  checking: 'com_ui_nearai_proof_checking',
+  verified: 'com_ui_nearai_proof_verified',
+  failed: 'com_ui_nearai_proof_failed',
+  unavailable: 'com_ui_nearai_proof_unavailable',
+} as const;
+
+const titles = {
+  checking: 'com_ui_nearai_deploy_checking_title',
+  verified: 'com_ui_nearai_deploy_verified_title',
+  failed: 'com_ui_nearai_proof_failed',
+  unavailable: 'com_ui_nearai_deploy_unavailable_title',
+} as const;
+
+const checkTitles = {
+  gateway: 'com_ui_nearai_check_gateway',
+  cpu: 'com_ui_nearai_check_cpu',
+  gpu: 'com_ui_nearai_check_gpu',
+  key: 'com_ui_nearai_check_key',
+} as const;
+
+const checkCaptions = {
+  gateway: 'com_ui_nearai_check_gateway_caption',
+  cpu: 'com_ui_nearai_check_cpu_caption',
+  gpu: 'com_ui_nearai_check_gpu_caption',
+  key: 'com_ui_nearai_check_key_caption',
+} as const;
+
+/**
+ * Header proof button for NEAR AI endpoints. The server verifies the Gateway and the
+ * model's hardware with the inference SDK; the pill shows that result as a word that stays
+ * visible, and its popover lists the checks behind it.
+ */
 function Shield() {
   const localize = useLocalize();
   const queryClient = useQueryClient();
@@ -37,6 +107,25 @@ function Shield() {
     onSuccess: (result: TNearAIAttestationResponse) => queryClient.setQueryData(queryKey, result),
   });
 
+  const attestation = data?.enabled === true ? data : undefined;
+  const state = deploymentState({
+    data,
+    isError,
+    isChecking: reverify.isLoading || (!attestation && isFetching),
+  });
+
+  /** The shine and spring play only when a check in flight comes back verified. */
+  const [fresh, setFresh] = useState(false);
+  const previousState = useRef(state);
+  useEffect(() => {
+    if (state === 'checking') {
+      setFresh(false);
+    } else if (previousState.current === 'checking' && state === 'verified') {
+      setFresh(true);
+    }
+    previousState.current = state;
+  }, [state]);
+
   if (data?.enabled === false) {
     return null;
   }
@@ -44,120 +133,205 @@ function Shield() {
     return null;
   }
 
-  const attestation = data?.enabled === true ? data : undefined;
-  let state: ShieldState = 'checking';
-  if (reverify.isLoading || (!attestation && isFetching)) {
-    state = 'checking';
-  } else if (attestation?.status === 'verified') {
-    state = 'verified';
-  } else if (attestation?.status === 'failed' || isError) {
-    state = 'failed';
-  }
-
-  const label = localize(`com_ui_nearai_shield_${state}`);
-  const Icon = icons[state];
+  const word = localize(words[state]);
+  const failed = state === 'failed' ? failedDeploymentCheck(attestation) : undefined;
+  const ariaLabel = localize('com_ui_nearai_proof_aria', { 0: word });
 
   return (
     <>
-      <TooltipAnchor
-        description={label}
-        render={
-          <Ariakit.PopoverDisclosure
-            ref={disclosureRef}
-            store={popover}
-            aria-label={label}
-            data-testid="header-nearai-shield"
-            className={chromeIconButtonClasses()}
-          >
-            <Icon aria-hidden="true" className={cn('icon-md', iconColors[state])} />
-          </Ariakit.PopoverDisclosure>
-        }
-      />
+      <Ariakit.PopoverDisclosure
+        ref={disclosureRef}
+        store={popover}
+        aria-label={ariaLabel}
+        title={ariaLabel}
+        data-testid="header-nearai-shield"
+        className={cn(
+          'relative inline-flex h-9 shrink-0 items-center gap-1.5 overflow-hidden rounded-full pr-3 pl-2 text-sm font-semibold',
+          'transition-colors duration-200 motion-reduce:transition-none',
+          'focus-visible:ring-focus-control focus-visible:ring-2 focus-visible:outline-hidden',
+          pillTones[state],
+        )}
+      >
+        <ProofGlyph
+          state={glyphStates[state]}
+          failedSegment={failed ? DEPLOYMENT_CHECKS.indexOf(failed) : undefined}
+          className="size-5"
+        />
+        <span aria-hidden="true" className="whitespace-nowrap">
+          {word}
+        </span>
+        {fresh && (
+          <span
+            aria-hidden="true"
+            className="animate-proof-shine via-text-on-status/60 dark:via-text-on-status/25 pointer-events-none absolute inset-y-0 left-[-40%] w-[30%] -skew-x-12 bg-gradient-to-r from-transparent to-transparent motion-reduce:hidden"
+          />
+        )}
+      </Ariakit.PopoverDisclosure>
+      <span role="status" className="sr-only">
+        {state === 'checking' ? '' : ariaLabel}
+      </span>
       <Ariakit.Popover
         store={popover}
         gutter={8}
         portal
         unmountOnHide
+        fitViewport
         finalFocus={disclosureRef}
-        className="border-border-medium bg-surface-secondary text-text-primary rounded-theme-menu-panel z-[200] flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-3 border p-3 shadow-lg focus:outline-none"
+        className="popover-animate border-border-light bg-surface-secondary text-text-primary rounded-theme-popover z-[200] flex max-h-[var(--popover-available-height)] w-[23.25rem] max-w-[calc(100vw-2rem)] flex-col gap-3.5 overflow-y-auto overscroll-contain border p-4 shadow-lg focus:outline-none"
       >
-        <div className="flex items-center gap-2">
-          <Icon aria-hidden="true" className={cn('size-5 shrink-0', iconColors[state])} />
-          <Ariakit.PopoverHeading className="flex-1 text-sm font-semibold">
-            {label}
-          </Ariakit.PopoverHeading>
-          <TooltipAnchor
-            description={localize('com_ui_nearai_shield_verify_again')}
-            render={
-              <button
-                type="button"
-                onClick={() => reverify.mutate()}
-                disabled={state === 'checking'}
-                aria-label={localize('com_ui_nearai_shield_verify_again')}
-                className="hover:bg-surface-hover rounded-lg p-1 disabled:opacity-50"
-              >
-                <RefreshCw
-                  aria-hidden="true"
-                  className={cn(
-                    'size-4',
-                    reverify.isLoading && 'animate-spin motion-reduce:animate-none',
-                  )}
-                />
-              </button>
-            }
-          />
+        <div className="flex items-start gap-3">
+          <SealMark key={state} tone={sealTones[state]} glyph={sealGlyphs[state]} />
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <Ariakit.PopoverHeading
+              className={cn('text-base leading-5.25 font-bold', titleColors[state])}
+            >
+              {localize(titles[state])}
+            </Ariakit.PopoverHeading>
+            <p className="text-text-secondary text-xs leading-4">
+              <CheckedLabel state={state} checkedAt={attestation?.checkedAt} />
+            </p>
+          </div>
           <Ariakit.PopoverDismiss
             aria-label={localize('com_ui_close')}
-            className="hover:bg-surface-hover rounded-lg p-1"
+            className="text-text-secondary hover:bg-surface-hover focus-visible:ring-focus-control flex size-7 shrink-0 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:outline-hidden"
           >
-            <X className="size-4" aria-hidden="true" />
+            <X className="size-3.5" aria-hidden="true" />
           </Ariakit.PopoverDismiss>
         </div>
-        <p className="text-text-secondary text-sm">
-          {localize(`com_ui_nearai_shield_${state}_desc`)}
+
+        <p className="text-sm leading-5">
+          <DeploymentBody
+            state={state}
+            model={params.model}
+            errorCode={attestation?.errorCode}
+            blamedCheck={failed != null}
+          />
         </p>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-          <dt className="text-text-secondary">{localize('com_ui_nearai_shield_model')}</dt>
-          <dd className="font-mono break-all">{params.model}</dd>
-          {attestation && (
-            <>
-              <dt className="text-text-secondary">{localize('com_ui_nearai_shield_checked_at')}</dt>
-              <dd>{new Date(attestation.checkedAt).toLocaleString()}</dd>
-            </>
-          )}
-          {attestation?.errorCode && (
-            <>
-              <dt className="text-text-secondary">{localize('com_ui_nearai_shield_error')}</dt>
-              <dd className="text-status-error font-mono break-all">{attestation.errorCode}</dd>
-            </>
-          )}
-        </dl>
-        {isError && !attestation && (
-          <p role="alert" className="text-status-error text-sm">
-            {localize('com_ui_nearai_shield_unavailable')}
-          </p>
-        )}
-        {attestation?.verifyUrl && (
-          <a
-            href={modelVerifyLink(attestation.verifyUrl, params.model)}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={localize('com_ui_nearai_view_details')}
-            className="border-border-medium text-text-primary hover:bg-surface-hover inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium"
+
+        {state !== 'unavailable' && <DeploymentChecks state={state} report={attestation} />}
+
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            shape="round"
+            onClick={() => reverify.mutate()}
+            disabled={state === 'checking'}
           >
-            {localize('com_ui_nearai_view_details_on')}
-            <img src="/assets/nearai-logo.svg" alt="" className="h-3.5 w-auto dark:hidden" />
-            <img
-              src="/assets/nearai-logo-white.svg"
-              alt=""
-              className="hidden h-3.5 w-auto dark:block"
+            <RefreshCw
+              aria-hidden="true"
+              className={cn(
+                'size-3.5',
+                reverify.isLoading && 'animate-spin motion-reduce:animate-none',
+              )}
             />
-            <ExternalLink className="text-text-secondary size-4" aria-hidden="true" />
-          </a>
-        )}
+            {localize('com_ui_nearai_check_again')}
+          </Button>
+          <span className="flex-1" />
+          {attestation?.verifyUrl && (
+            <a
+              href={modelVerifyLink(attestation.verifyUrl, params.model)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonVariants({ variant: 'submit', size: 'sm', shape: 'round' })}
+            >
+              {state === 'failed'
+                ? localize('com_ui_nearai_see_failure')
+                : localize('com_ui_nearai_open_report')}
+              <ArrowUpRight aria-hidden="true" className="size-3.5" />
+              <span className="sr-only">{localize('com_ui_nearai_opens_nearai')}</span>
+            </a>
+          )}
+        </div>
+
+        <p className="text-text-secondary border-border-light border-t pt-2.5 text-xs leading-4">
+          {state === 'failed' || state === 'unavailable'
+            ? localize('com_ui_nearai_deploy_failed_footer')
+            : localize('com_ui_nearai_deploy_footer')}
+        </p>
       </Ariakit.Popover>
     </>
   );
+}
+
+function CheckedLabel({ state, checkedAt }: { state: DeploymentState; checkedAt?: string }) {
+  const localize = useLocalize();
+  const when = state === 'checking' ? undefined : formatCheckedAt(checkedAt);
+  if (!when) {
+    return <>{localize('com_ui_nearai_deploy_checking_sub')}</>;
+  }
+  if (when.justNow) {
+    return <>{localize('com_ui_nearai_checked_just_now')}</>;
+  }
+  return <>{localize('com_ui_nearai_checked_at', { 0: when.label })}</>;
+}
+
+function DeploymentBody({
+  state,
+  model,
+  errorCode,
+  blamedCheck,
+}: {
+  state: DeploymentState;
+  model: string;
+  errorCode?: string;
+  /** A check row shows the failure code, so the body need not repeat it. */
+  blamedCheck: boolean;
+}) {
+  const localize = useLocalize();
+  if (state === 'checking') {
+    return <>{localize('com_ui_nearai_deploy_checking_body', { 0: model })}</>;
+  }
+  if (state === 'verified') {
+    return <>{localize('com_ui_nearai_deploy_verified_body', { 0: model })}</>;
+  }
+  if (state === 'failed' && blamedCheck) {
+    return <>{localize('com_ui_nearai_deploy_failed_body', { 0: model })}</>;
+  }
+  if (state === 'failed' && isCheckFailure(errorCode)) {
+    return <>{localize('com_ui_nearai_deploy_failed_code_body', { 0: model, 1: errorCode })}</>;
+  }
+  if (state === 'failed') {
+    return <>{localize('com_ui_nearai_deploy_failed_unknown_body', { 0: model })}</>;
+  }
+  return <>{localize('com_ui_nearai_deploy_unavailable_body')}</>;
+}
+
+function DeploymentChecks({
+  state,
+  report,
+}: {
+  state: DeploymentState;
+  report?: DeploymentReport;
+}) {
+  const localize = useLocalize();
+  const states = deploymentChecks(state, report);
+  const caption = (check: DeploymentCheck) => {
+    if (states[check] === 'active') {
+      return localize('com_ui_nearai_proof_checking');
+    }
+    if (states[check] === 'fail') {
+      return localize('com_ui_nearai_check_fail_caption', { 0: report?.errorCode ?? '' });
+    }
+    if (states[check] === 'warn') {
+      return localize('com_ui_nearai_check_not_provided');
+    }
+    if (states[check] === 'skip') {
+      return localize('com_ui_nearai_check_unconfirmed');
+    }
+    if (check === 'cpu' && report?.tcbStatus) {
+      return localize('com_ui_nearai_check_cpu_status_caption', { 0: report.tcbStatus });
+    }
+    return localize(checkCaptions[check]);
+  };
+  const rows: CheckRow[] = DEPLOYMENT_CHECKS.map((check) => ({
+    id: check,
+    state: states[check],
+    title: localize(checkTitles[check]),
+    caption: caption(check),
+  }));
+  return <CheckList rows={rows} />;
 }
 
 export default memo(Shield);

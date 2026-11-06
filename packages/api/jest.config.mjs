@@ -6,12 +6,18 @@ const esModules = [
   '@langchain/langgraph-sdk',
   '@mistralai/mistralai',
   '@modelcontextprotocol/ext-apps',
+  '@nearai/inference-sdk',
+  '@freedomofpress',
+  'bhttp-ts',
   'domelementtype',
   'domhandler',
   'dom-serializer',
   'domutils',
   'entities',
+  'hpke',
   'htmlparser2',
+  'jose',
+  'ohttp-ts',
   'sanitize-html',
   'uuid',
 ].join('|');
@@ -31,7 +37,7 @@ export default {
   coverageReporters: ['text', 'cobertura'],
   testResultsProcessor: 'jest-junit',
   transform: {
-    '\\.[jt]sx?$': [
+    '\\.m?[jt]sx?$': [
       'babel-jest',
       {
         presets: [

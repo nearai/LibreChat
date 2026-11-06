@@ -183,6 +183,17 @@ export interface IThemeRGB {
    * mark on that success fill, which is what it wore before this token existed.
    */
   'rgb-status-verified'?: string;
+  /**
+   * Text and fill of an attestation proof that passed: the proof pill and tag,
+   * their check rows and the seal-match note. A pair of its own rather than
+   * `status-success`, because a proof sits beside every reply as a standing
+   * trust mark, not a passing outcome: it is calmer than the success text in
+   * dark and fuller than the success fill in light, where the note has no
+   * border to set it off the popover. A theme that names `status-success` or
+   * `status-success-subtle` and not these keeps its own success colors here.
+   */
+  'rgb-status-proof'?: string;
+  'rgb-status-proof-subtle'?: string;
   'rgb-text-on-status'?: string;
 
   // Brand colors
@@ -379,6 +390,8 @@ export interface IThemeVariables {
   '--status-neutral-subtle': string;
   '--status-neutral-border': string;
   '--status-verified': string;
+  '--status-proof': string;
+  '--status-proof-subtle': string;
   '--text-on-status': string;
   '--brand-purple': string;
   '--avatar-fill': string;
@@ -540,6 +553,8 @@ export interface IThemeColors {
   'status-neutral-subtle'?: string;
   'status-neutral-border'?: string;
   'status-verified'?: string;
+  'status-proof'?: string;
+  'status-proof-subtle'?: string;
   'text-on-status'?: string;
   'brand-purple'?: string;
   'avatar-fill'?: string;

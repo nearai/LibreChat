@@ -202,6 +202,8 @@ html {
   --status-neutral-subtle: var(--gray-100);
   --status-neutral-border: var(--gray-300);
   --status-verified: 37 99 235;
+  --status-proof: 26 107 72;
+  --status-proof-subtle: 210 241 223;
   --text-on-status: var(--white);
   --text-disabled: var(--gray-400);
 
@@ -481,6 +483,8 @@ html {
   --status-neutral-subtle: var(--gray-800);
   --status-neutral-border: var(--gray-700);
   --status-verified: 26 127 216;
+  --status-proof: 133 201 161;
+  --status-proof-subtle: 24 49 36;
   --text-on-status: var(--white);
 
   /* Categorical series scale: same hues, stepped for the dark surface */
