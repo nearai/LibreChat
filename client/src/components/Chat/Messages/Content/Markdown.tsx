@@ -6,6 +6,7 @@ import MarkdownErrorBoundary from './MarkdownErrorBoundary';
 import { FADE_HYDRATION_THRESHOLD } from './animate';
 import { useMessageContext } from '~/Providers';
 import MarkdownBlocks from './MarkdownBlocks';
+import { WaitMark } from '../ui/Mark';
 import store from '~/store';
 
 type TContentProps = {
@@ -43,6 +44,7 @@ const Markdown = memo(function Markdown({ content = '', isLatestMessage }: TCont
     return (
       <div className="absolute">
         <p className="relative">
+          {streaming && <WaitMark />}
           <span className={isLatestMessage ? 'result-thinking' : ''} />
         </p>
       </div>

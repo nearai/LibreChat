@@ -388,6 +388,19 @@ describe('theme registry', () => {
     ]);
   });
 
+  it('lights the landing greeting only for a theme that names a glow', () => {
+    const glowing: ThemeDefinition = {
+      version: 1,
+      name: 'greeting-glow-reference',
+      modes: { dark: { appearance: { greetingGlow: 'rgb(0 145 253 / 0.42)' } } },
+    };
+
+    expect(defaultAppearance.greetingGlow).toBe('transparent');
+    expect(validateThemeDefinition(glowing)).toEqual([]);
+    expect(resolveTheme(glowing, 'dark').appearance.greetingGlow).toBe('rgb(0 145 253 / 0.42)');
+    expect(resolveTheme(glowing, 'light').appearance.greetingGlow).toBe('transparent');
+  });
+
   it('rings subtle focus in the heavy border for a theme that predates the role', () => {
     const resolved = resolveTheme(
       {
@@ -1130,6 +1143,7 @@ describe('theme registry', () => {
         'rgb-border-menu': ['rgb-border-light', 'rgb-border-light'],
         'rgb-surface-composer': ['rgb-surface-chat', 'rgb-surface-chat'],
         'rgb-surface-search': ['rgb-surface-secondary', 'rgb-surface-secondary'],
+        'rgb-surface-shell': ['rgb-surface-primary-alt', 'rgb-surface-primary-alt'],
       };
       expect(
         Object.fromEntries(layerRoleSources.map(([role, light, dark]) => [role, [light, dark]])),

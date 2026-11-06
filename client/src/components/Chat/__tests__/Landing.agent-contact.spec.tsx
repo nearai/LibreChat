@@ -8,12 +8,8 @@ import Landing from '../Landing';
 let mockConversation: Record<string, unknown> | null = null;
 let mockAgentsMap: Record<string, any> | undefined;
 let mockAssistantMap: Record<string, any> | undefined;
-
-jest.mock('@react-spring/web', () => ({
-  easings: {
-    easeOutCubic: jest.fn(),
-  },
-}));
+let mockInterface: Record<string, unknown> = {};
+let mockUser: { name: string } | undefined;
 
 jest.mock('librechat-data-provider', () => ({
   EModelEndpoint: {
@@ -25,7 +21,6 @@ jest.mock('librechat-data-provider', () => ({
 jest.mock('@librechat/client', () => ({
   BirthdayIcon: () => <span data-testid="birthday-icon" />,
   TooltipAnchor: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
-  SplitText: ({ text }: { text: string }) => <span>{text}</span>,
   useRemScale: () => 1,
 }));
 
@@ -36,12 +31,12 @@ jest.mock('~/Providers', () => ({
 }));
 
 jest.mock('~/data-provider', () => ({
-  useGetStartupConfig: () => ({ data: { interface: {} } }),
+  useGetStartupConfig: () => ({ data: { interface: mockInterface } }),
   useGetEndpointsQuery: () => ({ data: {} }),
 }));
 
 jest.mock('~/hooks', () => ({
-  useAuthContext: () => ({ user: undefined }),
+  useAuthContext: () => ({ user: mockUser }),
   useGreeting: () => 'Welcome',
   useLocalize: () => (key: string) => {
     const translations: Record<string, string> = {
@@ -97,6 +92,11 @@ function renderLanding({ isTemporary = false }: { isTemporary?: boolean } = {}) 
   );
 }
 
+beforeEach(() => {
+  mockInterface = {};
+  mockUser = undefined;
+});
+
 describe('Landing agent contact', () => {
   beforeEach(() => {
     mockConversation = null;
@@ -121,6 +121,7 @@ describe('Landing agent contact', () => {
     renderLanding();
 
     expect(screen.getByText('Portal Remote Agent')).toBeInTheDocument();
+    expect(screen.getByTestId('convo-icon')).toBeInTheDocument();
     expect(screen.getByText('Remote Agent Showcase')).toBeInTheDocument();
     expect(screen.getByText('Contact:')).toBeInTheDocument();
     expect(screen.getByText('Owner User')).toBeInTheDocument();
@@ -224,11 +225,133 @@ describe('Landing temporary chat empty state', () => {
     expect(screen.queryByText('Contact:')).not.toBeInTheDocument();
   });
 
-  it('keeps the normal greeting when temporary chat is off', () => {
+  it('keeps the normal greeting, standing alone, when temporary chat is off', () => {
     renderLanding();
 
     expect(screen.getByText('Welcome')).toBeInTheDocument();
     expect(screen.queryByText('Temporary Chat')).not.toBeInTheDocument();
-    expect(screen.getByTestId('convo-icon')).toBeInTheDocument();
+    /** A plain greeting is the screen's one headline; the icon introduces a named entity. */
+    expect(screen.queryByTestId('convo-icon')).not.toBeInTheDocument();
+  });
+});
+
+describe('Landing greeting', () => {
+  beforeEach(() => {
+    mockConversation = null;
+    mockAgentsMap = undefined;
+    mockAssistantMap = undefined;
+  });
+
+  /** The greeting used to rise letter by letter; it now enters as one line, and only when
+   *  motion is allowed. */
+  it('fades the greeting up as one line', () => {
+    mockInterface = { customWelcome: 'Welcome to Near AI private Chat' };
+
+    renderLanding();
+
+    const headline = screen.getByText('Welcome to Near AI private Chat');
+    expect(headline.tagName).toBe('P');
+    expect(headline).toHaveClass('animate-greeting-rise', 'motion-reduce:animate-none');
+  });
+
+  it('sets the configured subtitle under the greeting, filling in the user name', () => {
+    mockUser = { name: 'Ada' };
+    mockInterface = {
+      customWelcome: 'Welcome, {{user.name}}',
+      customWelcomeSubtitle: "What's on your mind, {{user.name}}?",
+    };
+
+    renderLanding();
+
+    const headline = screen.getByText('Welcome, Ada');
+    const subtitle = screen.getByText("What's on your mind, Ada?");
+    expect(headline.compareDocumentPosition(subtitle) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(subtitle).toHaveClass('text-text-secondary', 'animate-greeting-rise-late');
+  });
+
+  it('shows no subtitle unless one is configured', () => {
+    mockInterface = { customWelcome: 'Hello' };
+
+    const { container } = renderLanding();
+
+    expect(container.querySelectorAll('p')).toHaveLength(1);
+  });
+
+  it('leaves the subtitle out of a temporary chat, whose explanation takes its place', () => {
+    mockInterface = { customWelcomeSubtitle: "What's on your mind?" };
+
+    renderLanding({ isTemporary: true });
+
+    expect(screen.queryByText("What's on your mind?")).not.toBeInTheDocument();
+  });
+
+  it('leads the greeting with the brand mark, rising with it', () => {
+    mockInterface = {
+      customWelcome: 'Welcome to Near AI private Chat',
+      brand: { mark: '/assets/nearai-mark.svg' },
+    };
+
+    renderLanding();
+
+    const mark = screen.getByTestId('landing-brand-mark');
+    const headline = screen.getByText('Welcome to Near AI private Chat');
+    expect(mark).toHaveAttribute('src', '/assets/nearai-mark.svg');
+    /** Decorative: the greeting and the sidebar already name the brand. */
+    expect(mark).toHaveAttribute('alt', '');
+    expect(mark).toHaveClass('animate-greeting-rise', 'motion-reduce:animate-none');
+    expect(mark.compareDocumentPosition(headline) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  /** `greetingMark: near` draws the NEAR mark inked in like a marker instead of the image. */
+  it('draws the NEAR mark like a marker when the brand asks for it', () => {
+    mockInterface = {
+      customWelcome: 'Welcome to Near AI private Chat',
+      brand: { mark: '/assets/nearai-mark.svg', greetingMark: 'near' },
+    };
+
+    const { container } = renderLanding();
+
+    const drawn = container.querySelector('svg.lc-drawn-mark');
+    const headline = screen.getByText('Welcome to Near AI private Chat');
+    expect(drawn).not.toBeNull();
+    expect(drawn).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.queryByTestId('landing-brand-mark')).not.toBeInTheDocument();
+    expect(
+      (drawn as Element).compareDocumentPosition(headline) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('draws no mark unless the deployment configures one', () => {
+    mockInterface = { customWelcome: 'Hello' };
+
+    renderLanding();
+
+    expect(screen.queryByTestId('landing-brand-mark')).not.toBeInTheDocument();
+  });
+
+  it('keeps the mark off a temporary chat and an agent, which carry their own icons', () => {
+    mockInterface = { brand: { mark: '/assets/nearai-mark.svg' } };
+
+    const temporary = renderLanding({ isTemporary: true });
+    expect(screen.queryByTestId('landing-brand-mark')).not.toBeInTheDocument();
+    temporary.unmount();
+
+    mockConversation = { endpoint: 'agents', agent_id: 'agent-1' };
+    mockAgentsMap = { 'agent-1': { id: 'agent-1', name: 'Portal Remote Agent' } };
+    renderLanding();
+    expect(screen.queryByTestId('landing-brand-mark')).not.toBeInTheDocument();
+  });
+
+  it('fades an agent name up the same way', () => {
+    mockConversation = { endpoint: 'agents', agent_id: 'agent-1' };
+    mockAgentsMap = { 'agent-1': { id: 'agent-1', name: 'Portal Remote Agent' } };
+
+    renderLanding();
+
+    expect(screen.getByText('Portal Remote Agent')).toHaveClass('animate-greeting-rise');
   });
 });

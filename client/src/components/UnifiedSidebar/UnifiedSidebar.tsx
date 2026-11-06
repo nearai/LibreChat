@@ -291,6 +291,9 @@ function UnifiedSidebar({
               : `width ${TRANSITION_MS}ms ${EASING}, min-width ${TRANSITION_MS}ms ${EASING}, max-width ${TRANSITION_MS}ms ${EASING}`,
           }}
           aria-label={localize('com_nav_control_panel')}
+          /** Read by the content pane beside it, which rounds its leading corners once the
+           *  panel no longer joins it. */
+          data-panel={panelExpanded ? 'open' : 'closed'}
         >
           <Sidebar
             links={links}

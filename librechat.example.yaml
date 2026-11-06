@@ -167,6 +167,8 @@ projects:
 # Custom interface configuration
 interface:
   customWelcome: 'Welcome to LibreChat! Enjoy your experience.'
+  # An optional line under the welcome; `{{user.name}}` is filled in here too.
+  # customWelcomeSubtitle: "What's on your mind?"
   # Allow renaming a running chat or one with a placeholder title (default: true).
   # Set to false during a rolling upgrade, until ALL API replicas are upgraded and old
   # title-generation jobs have drained. While false, rename is disabled for running chats

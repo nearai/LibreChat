@@ -100,6 +100,7 @@
   --color-text-secondary-alt: rgb(var(--text-secondary-alt));
   --color-text-tertiary: rgb(var(--text-tertiary));
   --color-text-muted: rgb(var(--text-muted));
+  --color-text-placeholder: rgb(var(--text-placeholder));
   /* Falls back to the ink badges were labeled in, for a stylesheet that predates it. */
   --color-badge-label: rgb(var(--badge-label, var(--text-primary)));
   --color-text-warning: rgb(var(--text-warning));
@@ -145,6 +146,7 @@
   --color-alert-error-fill: rgb(var(--alert-error-fill, var(--status-error-subtle)));
   --color-alert-error-border: rgb(var(--alert-error-border, var(--status-error-border)));
   --color-surface-canvas: rgb(var(--surface-canvas));
+  --color-surface-shell: rgb(var(--surface-shell));
   --color-surface-user-message: rgb(var(--surface-user-message));
   --color-surface-card: rgb(var(--surface-card));
   --color-surface-card-hover: rgb(var(--surface-card-hover));
@@ -181,6 +183,10 @@
   --color-status-neutral-subtle: rgb(var(--status-neutral-subtle));
   --color-status-neutral-border: rgb(var(--status-neutral-border));
   --color-status-verified: rgb(var(--status-verified));
+
+  /* The welcome screen's light, rising from the composer: a whole color, alpha included, from
+     the `greetingGlow` appearance role, so a theme that sets none paints nothing. */
+  --color-greeting-glow: var(--theme-greeting-glow, transparent);
 
   /* data series */
   --color-series-1: rgb(var(--series-1));

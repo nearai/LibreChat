@@ -178,8 +178,10 @@ export const CustomMenuItem = React.forwardRef<HTMLDivElement, CustomMenuItemPro
         /** Keyboard focus uses the hover surface: the menu sits on
          *  bg-presentation, which resolves to the same value as
          *  surface-secondary in dark and within 3/255 of it in light, so an
-         *  active item styled that way cannot render against its own popover. */
-        'relative flex w-full min-w-0 cursor-default scroll-m-1 scroll-mt-[calc(var(--combobox-height,0px)+var(--label-height,0.25rem))] items-center gap-2 rounded-lg px-2 py-1 outline-hidden! hover:bg-surface-hover aria-disabled:opacity-25 aria-selected:bg-surface-hover data-[active-item]:bg-surface-hover data-[active-item]:text-text-primary sm:text-sm before:absolute before:bottom-1 before:left-0 before:top-1 before:w-0.5 before:rounded-full before:bg-transparent data-[active-item]:before:bg-text-primary',
+         *  active item styled that way cannot render against its own popover.
+         *  The chosen item takes the step past hover, so it still reads as chosen
+         *  while the pointer rests on another row. */
+        'relative flex w-full min-w-0 cursor-default scroll-m-1 scroll-mt-[calc(var(--combobox-height,0px)+var(--label-height,0.25rem))] items-center gap-2 rounded-lg px-2 py-1 outline-hidden! hover:bg-surface-hover aria-disabled:opacity-25 aria-selected:bg-surface-active-alt data-[active-item]:bg-surface-hover data-[active-item]:text-text-primary sm:text-sm before:absolute before:bottom-1 before:left-0 before:top-1 before:w-0.5 before:rounded-full before:bg-transparent data-[active-item]:before:bg-text-primary',
         props.className,
       ),
     };

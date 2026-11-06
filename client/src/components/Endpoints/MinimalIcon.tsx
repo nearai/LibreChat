@@ -2,6 +2,7 @@ import { Feather } from 'lucide-react';
 import { EModelEndpoint, alternateName } from 'librechat-data-provider';
 import { pxToRem, Sparkles, ProviderIcon, getProviderIconDef } from '@librechat/client';
 import type { IconProps } from '~/common';
+import CustomIcon from '~/components/ui/CustomIcon';
 import { useProviderIcon } from '~/hooks/Endpoint';
 import { cn } from '~/utils';
 
@@ -60,8 +61,12 @@ const MinimalIcon: React.FC<IconProps> = (props) => {
   const name = modelLabel ?? chatGptLabel ?? (provider != null ? def.label : endpoint || def.label);
 
   if (imageURL != null) {
+    /** `CustomIcon` tints a one-ink SVG to the current color, as MCP and group icons are, and
+     *  draws any other image as it is. The caller's classes size and color the box it fills. */
     return renderWrapper(
-      <img className={cn('icon-sm', iconClassName)} src={imageURL} alt={`${endpoint} Icon`} />,
+      <span className={cn('icon-sm inline-flex', iconClassName)}>
+        <CustomIcon className="size-full" src={imageURL} alt={`${endpoint} Icon`} />
+      </span>,
       name,
     );
   }

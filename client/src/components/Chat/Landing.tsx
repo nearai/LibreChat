@@ -1,24 +1,28 @@
-import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { HatGlasses } from 'lucide-react';
-import { easings } from '@react-spring/web';
 import { EModelEndpoint } from 'librechat-data-provider';
-import { BirthdayIcon, TooltipAnchor, SplitText, useRemScale } from '@librechat/client';
+import { BirthdayIcon, TooltipAnchor, useRemScale } from '@librechat/client';
 import { useChatContext, useAgentsMapContext, useAssistantsMapContext } from '~/Providers';
 import Description, { isHtmlDescription } from '~/components/ui/Description';
 import { useGetEndpointsQuery, useGetStartupConfig } from '~/data-provider';
-import { getIconEndpoint, getEntity, getModelSpec } from '~/utils';
+import { getIconEndpoint, getEntity, getModelSpec, cn } from '~/utils';
 import { useLocalize, useAuthContext, useGreeting } from '~/hooks';
 import { useChatSettings } from '~/Providers/ChatSettingsContext';
 import AgentContact from '~/components/Agents/AgentContact';
 import ConvoIcon from '~/components/Endpoints/ConvoIcon';
+import { DrawnMark } from './Messages/ui/Mark';
 
 const containerClassName =
   'shadow-stroke relative flex h-full items-center justify-center rounded-full bg-presentation text-text-primary dark:after:shadow-none ';
 
-/** Stable references: fresh literals re-initialized SplitText's springs and
- * re-rendered every grapheme span on each Landing render. */
-const greetingAnimationFrom = { opacity: 0, transform: 'translate3d(0,50px,0)' };
-const greetingAnimationTo = { opacity: 1, transform: 'translate3d(0,0,0)' };
+/** The headline fades up into place as one line; under reduced motion it is simply there. */
+const headlineClassName =
+  'animate-greeting-rise text-text-primary text-center font-semibold tracking-tight motion-reduce:animate-none';
+
+/** Configured landing copy, with `{{user.name}}` filled in once the user has a name. */
+function withUserName(text: string | undefined, userName?: string) {
+  return text != null && userName ? text.replace(/{{user.name}}/g, userName) : text;
+}
 
 function getTextSizeClass(text: string | undefined | null) {
   if (!text) {
@@ -26,7 +30,7 @@ function getTextSizeClass(text: string | undefined | null) {
   }
 
   if (text.length < 56) {
-    return 'text-2xl sm:text-4xl';
+    return 'text-2xl sm:text-[1.75rem] sm:leading-[2.125rem]';
   }
 
   if (text.length < 70) {
@@ -48,9 +52,7 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
   const { isTemporary } = useChatSettings();
 
   const [textHasMultipleLines, setTextHasMultipleLines] = useState(false);
-  const [lineCount, setLineCount] = useState(1);
-  const [contentHeight, setContentHeight] = useState(0);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const headlineRef = useRef<HTMLParagraphElement>(null);
 
   const endpointType = useMemo(() => {
     let ep = conversation?.endpoint ?? '';
@@ -64,7 +66,7 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
     });
   }, [conversation?.endpoint, conversation?.iconURL, endpointsConfig]);
 
-  const { entity, isAgent, isAssistant } = getEntity({
+  const { entity, isAgent } = getEntity({
     endpoint: endpointType,
     agentsMap,
     assistantMap,
@@ -91,114 +93,126 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
     typeof startupConfig?.interface?.customWelcome === 'string'
       ? startupConfig.interface.customWelcome
       : undefined;
+  const customSubtitle =
+    typeof startupConfig?.interface?.customWelcomeSubtitle === 'string'
+      ? startupConfig.interface.customWelcomeSubtitle
+      : undefined;
 
   const scheduledGreeting = useGreeting(user?.name);
 
-  const handleLineCountChange = useCallback((count: number) => {
-    setTextHasMultipleLines(count > 1);
-    setLineCount(count);
-  }, []);
-
-  useEffect(() => {
-    if (contentRef.current) {
-      setContentHeight(contentRef.current.offsetHeight);
-    }
-  }, [lineCount, description, selectedAgent, remScale]);
-
-  const getDynamicMargin = useMemo(() => {
-    let margin = 'mb-0';
-
-    if (lineCount > 2 || (description && description.length > 100)) {
-      margin = 'mb-10';
-    } else if (lineCount > 1 || (description && description.length > 0)) {
-      margin = 'mb-6';
-    } else if (textHasMultipleLines) {
-      margin = 'mb-4';
-    }
-
-    if (contentHeight > 200) {
-      margin = 'mb-16';
-    } else if (contentHeight > 150) {
-      margin = 'mb-12';
-    }
-
-    return margin;
-  }, [lineCount, description, textHasMultipleLines, contentHeight]);
-
-  const resolvedWelcome =
-    customWelcome != null && user?.name
-      ? customWelcome.replace(/{{user.name}}/g, user.name)
-      : customWelcome;
+  const resolvedWelcome = withUserName(customWelcome, user?.name);
+  const subtitle = isTemporary ? undefined : withUserName(customSubtitle, user?.name);
+  /** The deployment's brand mark leads its own greeting; a temporary chat keeps its own icon. */
+  const brand = isTemporary ? undefined : startupConfig?.interface?.brand;
 
   const greetingText = isTemporary
     ? localize('com_ui_temporary')
     : (resolvedWelcome ?? scheduledGreeting);
+  const headline = name || greetingText;
+
+  /** The icon stacks over a headline that wraps, so count its lines once it has laid out. */
+  useEffect(() => {
+    const element = headlineRef.current;
+    if (!element) {
+      return;
+    }
+    const style = getComputedStyle(element);
+    const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2;
+    setTextHasMultipleLines(Math.round(element.offsetHeight / lineHeight) > 1);
+  }, [headline, remScale]);
 
   return (
+    /* The greeting sits a fixed gap above the composer, however tall it is. On a phone the
+       composer is at the foot of the screen and this column fills the space above it; with the
+       composer centered (`centerFormOnLanding`) this column has no height of its own, and the
+       greeting is anchored to its foot and grows upward, so a mark, a subtitle or a long
+       description can never run into the composer. */
     <div
-      className={`flex h-full transform-gpu flex-col items-center justify-center pb-16 transition-all duration-200 ${centerFormOnLanding ? 'max-h-full sm:max-h-0' : 'max-h-full'} ${getDynamicMargin}`}
+      className={cn(
+        'flex h-full max-h-full transform-gpu flex-col items-center justify-end pb-4 transition-all duration-200',
+        centerFormOnLanding ? 'sm:max-h-0 sm:pb-8' : 'sm:justify-center sm:pb-16',
+      )}
     >
-      <div ref={contentRef} className="flex flex-col items-center gap-0 p-2">
+      <div className="flex flex-col items-center gap-0 p-2">
         <div
           className={`flex ${textHasMultipleLines ? 'flex-col' : 'flex-col md:flex-row'} items-center justify-center gap-2`}
         >
-          <div className={`relative size-10 justify-center ${textHasMultipleLines ? 'mb-2' : ''}`}>
-            {isTemporary ? (
-              <div className={containerClassName}>
-                <HatGlasses className="text-text-primary h-2/3 w-2/3" aria-hidden="true" />
-              </div>
-            ) : (
-              <ConvoIcon
-                agentsMap={agentsMap}
-                assistantMap={assistantMap}
-                conversation={conversation}
-                endpointsConfig={endpointsConfig}
-                containerClassName={containerClassName}
-                context="landing"
-                className="text-text-primary h-2/3 w-2/3"
-                size={41}
-              />
-            )}
-            {startupConfig?.showBirthdayIcon && (
-              <TooltipAnchor
-                className="absolute right-2 bottom-[1.6875rem]"
-                description={localize('com_ui_happy_birthday')}
-                aria-label={localize('com_ui_happy_birthday')}
-              >
-                <BirthdayIcon />
-              </TooltipAnchor>
-            )}
-          </div>
-          {((isAgent || isAssistant) && name) || name ? (
+          {/* A plain greeting stands alone, as the screen's one headline; the icon introduces an
+              agent, an assistant, a branded spec or a temporary chat. */}
+          {(isTemporary || name) && (
+            <div
+              className={`relative size-10 justify-center ${textHasMultipleLines ? 'mb-2' : ''}`}
+            >
+              {isTemporary ? (
+                <div className={containerClassName}>
+                  <HatGlasses className="text-text-primary h-2/3 w-2/3" aria-hidden="true" />
+                </div>
+              ) : (
+                <ConvoIcon
+                  agentsMap={agentsMap}
+                  assistantMap={assistantMap}
+                  conversation={conversation}
+                  endpointsConfig={endpointsConfig}
+                  containerClassName={containerClassName}
+                  context="landing"
+                  className="text-text-primary h-2/3 w-2/3"
+                  size={41}
+                />
+              )}
+              {startupConfig?.showBirthdayIcon && (
+                <TooltipAnchor
+                  className="absolute right-2 bottom-[1.6875rem]"
+                  description={localize('com_ui_happy_birthday')}
+                  aria-label={localize('com_ui_happy_birthday')}
+                >
+                  <BirthdayIcon />
+                </TooltipAnchor>
+              )}
+            </div>
+          )}
+          {name ? (
             <div className="flex flex-col items-center gap-0 p-2">
-              <SplitText
-                key={`split-text-${name}`}
-                text={name}
-                className={`${getTextSizeClass(name)} text-text-primary font-medium`}
-                delay={50}
-                textAlign="center"
-                animationFrom={greetingAnimationFrom}
-                animationTo={greetingAnimationTo}
-                easing={easings.easeOutCubic}
-                threshold={0}
-                rootMargin="0px"
-                onLineCountChange={handleLineCountChange}
-              />
+              <p
+                key={name}
+                ref={headlineRef}
+                dir="auto"
+                className={cn(getTextSizeClass(name), headlineClassName)}
+              >
+                {name}
+              </p>
             </div>
           ) : (
-            <SplitText
-              key={`split-text-${greetingText}${user?.name ? '-user' : ''}`}
-              text={greetingText}
-              className={`${getTextSizeClass(greetingText)} text-text-primary font-medium`}
-              delay={50}
-              textAlign="center"
-              animationFrom={greetingAnimationFrom}
-              animationTo={greetingAnimationTo}
-              easing={easings.easeOutCubic}
-              threshold={0}
-              rootMargin="0px"
-              onLineCountChange={handleLineCountChange}
-            />
+            /* The key replays the entrance when the greeting changes. */
+            <div key={greetingText} className="flex flex-col items-center">
+              {/* Decorative either way: the greeting says the same, and the sidebar names the brand. */}
+              {brand?.greetingMark === 'near' ? (
+                <DrawnMark className="mb-6 size-16 sm:size-20" />
+              ) : (
+                brand?.mark && (
+                  <img
+                    src={brand.mark}
+                    alt=""
+                    data-testid="landing-brand-mark"
+                    className="animate-greeting-rise mb-6 size-16 motion-reduce:animate-none sm:size-20"
+                  />
+                )
+              )}
+              <p
+                ref={headlineRef}
+                dir="auto"
+                className={cn(getTextSizeClass(greetingText), headlineClassName)}
+              >
+                {greetingText}
+              </p>
+              {subtitle && (
+                <p
+                  dir="auto"
+                  className="animate-greeting-rise-late text-text-secondary mt-2 text-center text-base motion-reduce:animate-none sm:text-lg"
+                >
+                  {subtitle}
+                </p>
+              )}
+            </div>
           )}
         </div>
         <Description

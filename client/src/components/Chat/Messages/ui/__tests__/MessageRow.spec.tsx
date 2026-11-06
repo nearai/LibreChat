@@ -218,4 +218,21 @@ describe('MessageRow', () => {
 
     expect(screen.getByLabelText('Assistant message')).toHaveClass('max-w-full');
   });
+
+  /** `interface.messageAuthor: false` hides the agent's name line through this marker in CSS;
+   *  a user-side turn an agent wrote must not carry it, or its author would vanish too. */
+  it('marks only the agent-side author header for the deployment to hide', () => {
+    renderRow({ isCreatedByUser: false });
+    expect(screen.getByRole('heading', { name: /Assistant/ })).toHaveAttribute(
+      'data-author-header',
+      'agent',
+    );
+  });
+
+  it('leaves a user-side turn written by an agent unmarked', () => {
+    renderRow({ isCreatedByUser: true, showAuthor: true });
+    expect(screen.getByRole('heading', { name: 'Message from You' })).not.toHaveAttribute(
+      'data-author-header',
+    );
+  });
 });

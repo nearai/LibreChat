@@ -48,6 +48,30 @@ describe('menu and tooltip shadow roles in a theme definition', () => {
   });
 });
 
+describe('greeting glow role in a theme definition', () => {
+  it('accepts one color per mode, alpha and `transparent` included', () => {
+    const theme = definition({
+      light: { greetingGlow: 'rgb(0 145 253 / 0.2)' },
+      dark: { greetingGlow: '#0091fd6b' },
+    });
+
+    expect(deploymentThemeSchema.safeParse(theme).success).toBe(true);
+    expect(messages(theme)).toEqual([]);
+    expect(messages(definition({ light: { greetingGlow: 'transparent' } }))).toEqual([]);
+  });
+
+  it.each([
+    'var(--accent)',
+    'rgb(0 145 253); color: red',
+    '0 0 40px rgb(0 145 253)',
+    'url(glow.png)',
+  ])('rejects %s', (value) => {
+    expect(messages(definition({ dark: { greetingGlow: value } }))).toEqual([
+      `Invalid appearance value for greetingGlow: ${value}`,
+    ]);
+  });
+});
+
 describe('field fill roles in a theme definition', () => {
   const theme = {
     version: 1,

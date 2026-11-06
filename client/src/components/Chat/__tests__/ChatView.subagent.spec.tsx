@@ -22,6 +22,8 @@ jest.mock('@librechat/client', () => ({
   Spinner: () => <div data-testid="spinner" />,
 }));
 
+jest.mock('~/hooks/Nav/useDrawerViewport', () => () => false);
+
 jest.mock('librechat-data-provider', () => ({
   Constants: { NEW_CONVO: 'new', SEARCH: 'search' },
   buildTree: ({ messages }: { messages: unknown[] }) => messages,
@@ -56,6 +58,7 @@ jest.mock('~/Providers', () => {
 
 jest.mock('~/data-provider', () => ({
   useProjectQuery: () => ({ data: undefined }),
+  useGetConvoIdQuery: () => ({ data: undefined }),
   useGetMessagesByConvoId: () => ({
     data: [{ messageId: 'message-1' }],
     isLoading: false,
@@ -65,9 +68,17 @@ jest.mock('~/data-provider', () => ({
 
 jest.mock('../Input/ConversationStarters', () => () => null);
 jest.mock('../Messages/MessagesView', () => () => <div data-testid="messages" />);
-jest.mock('../Presentation', () => ({ children }: { children: React.ReactNode }) => (
-  <>{children}</>
-));
+/** Renders the toolbar slot too: on desktop the header rides there, above the canvas. */
+jest.mock(
+  '../Presentation',
+  () =>
+    ({ children, toolbar }: { children: React.ReactNode; toolbar?: React.ReactNode }) => (
+      <>
+        {toolbar}
+        {children}
+      </>
+    ),
+);
 jest.mock('../Input/ChatForm', () => () => <div data-testid="chat-form" />);
 jest.mock('../Landing', () => () => <div data-testid="landing" />);
 jest.mock('../Trace', () => ({

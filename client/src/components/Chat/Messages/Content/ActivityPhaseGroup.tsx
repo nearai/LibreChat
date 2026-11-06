@@ -46,6 +46,7 @@ import useTimeTick from '~/hooks/useTimeTick';
 import { getSourceDomains } from './sources';
 import { mapAttachments } from '~/utils/map';
 import SearchVerticals from './verticals';
+import { ProcessMark } from '../ui/Mark';
 
 /** Matches `EXPAND_TRANSITION` so the panel and the label ticker resolve on
  *  the same curve — two properties animating on two different easings is what
@@ -373,13 +374,14 @@ function LivePhaseHeader({
       <RailGlyph hover={railHover}>
         {iconNames.length === 0 ? (
           /** A span that is only reasoning so far has no tool to show; it takes
-           *  the glyph the reasoning row itself uses. */
+           *  the glyph the reasoning row itself uses, or the brand's process mark. */
           <span
-            className={cn(ROW_GLYPH_SLOT, 'text-text-primary animate-pulse')}
+            className={cn(ROW_GLYPH_SLOT, 'text-text-primary')}
             aria-hidden="true"
             data-testid="live-phase-thinking"
           >
-            <Lightbulb size={14} />
+            <Lightbulb size={14} className="lc-live-glyph animate-pulse" />
+            <ProcessMark working className="lc-live-mark size-4" />
           </span>
         ) : (
           <span className={ROW_GLYPH_SLOT} aria-hidden="true">
@@ -401,14 +403,16 @@ function LivePhaseHeader({
        *  separate element rather than part of the line's text so the
        *  disclosure's name keeps a space before it and the ticker still
        *  animates one sentence at a time. */}
-      <span className="flex min-w-0 flex-1 items-center gap-1.5">
+      {/** A span that is only reasoning so far is the live "Thinking" row: its label hugs the
+       *  text so the disclosure caret follows it, as it does on the settled thoughts row. */}
+      <span className={cn('flex min-w-0 items-center gap-1.5', iconNames.length > 0 && 'flex-1')}>
         <PhaseLabel
           text={painted.text}
           source={painted.source}
           failed={false}
           animate={animate}
           live
-          grow={combo === ''}
+          grow={combo === '' && iconNames.length > 0}
           lineId={lineId}
         />
         {combo !== '' && (
@@ -774,6 +778,7 @@ export default function ActivityPhaseGroup({
     showCursor && thoughtPeek == null ? (
       <div className={TOOL_ROW_CLASSES} data-testid="activity-phase-cursor">
         <span className={cn(ROW_GLYPH_SLOT, 'submitting')} aria-hidden="true">
+          <ProcessMark working className="lc-live-mark size-4" />
           <span className="result-thinking block after:!static" />
         </span>
       </div>

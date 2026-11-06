@@ -4,6 +4,7 @@ import { EModelEndpoint, isAssistantsEndpoint } from 'librechat-data-provider';
 import { pxToRem, AssistantIcon, TooltipAnchor, ProviderAvatar } from '@librechat/client';
 import type { IconProps } from '~/common';
 import { useProviderIcon } from '~/hooks/Endpoint';
+import { isSvgIcon } from '~/utils/icons';
 import { cn } from '~/utils';
 
 const MessageEndpointIcon: React.FC<IconProps> = (props) => {
@@ -105,7 +106,8 @@ const MessageEndpointIcon: React.FC<IconProps> = (props) => {
         )}
       >
         <div className="h-6 w-6">
-          <div className="overflow-hidden rounded-full">
+          {/* A vector mark is drawn whole; only a raster icon is cropped to the circle. */}
+          <div className={cn(!isSvgIcon(imageURL) && 'overflow-hidden rounded-full')}>
             <img className="h-full w-full object-contain" src={imageURL} alt={`${endpoint} Icon`} />
           </div>
         </div>

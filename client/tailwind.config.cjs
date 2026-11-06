@@ -75,6 +75,15 @@ module.exports = {
           from: { transform: 'rotate(0deg)' },
           to: { transform: 'rotate(-360deg)' },
         },
+        /** The landing greeting fades up into place as one line. */
+        'greeting-rise': {
+          from: { opacity: '0', transform: 'translate3d(0, 1.75rem, 0)' },
+          to: { opacity: '1', transform: 'translate3d(0, 0, 0)' },
+        },
+        'greeting-glow': {
+          from: { opacity: '0' },
+          to: { opacity: '1' },
+        },
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-out forwards',
@@ -90,6 +99,11 @@ module.exports = {
         'logo-blink': 'logo-blink 3s infinite',
         'refresh-link-spin': 'refresh-link-spin 650ms cubic-bezier(0.42, 0, 0.58, 1)',
         'reset-spin': 'reset-spin 500ms cubic-bezier(0.22, 1, 0.36, 1)',
+        /** A long, gentle ease-out, so the line rises slowly and settles into place; the subtitle
+         *  and the light rising from the composer follow a beat behind it. */
+        'greeting-rise': 'greeting-rise 1.6s cubic-bezier(0.33, 1, 0.68, 1) both',
+        'greeting-rise-late': 'greeting-rise 1.6s cubic-bezier(0.33, 1, 0.68, 1) 0.3s both',
+        'greeting-glow': 'greeting-glow 2s ease-out 0.2s both',
       },
     },
   },

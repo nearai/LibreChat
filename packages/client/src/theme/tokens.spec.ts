@@ -3,6 +3,7 @@ import path from 'path';
 import fsp from 'fs/promises';
 import { compile } from 'tailwindcss';
 import { deserialize, serialize } from 'v8';
+import { themeAppearanceProperties } from './registry';
 import { defaultTheme } from './themes/default';
 
 /** Tailwind's compiler clones its theme with `structuredClone`, which jsdom does not provide.
@@ -72,8 +73,13 @@ describe('theme color tokens', () => {
     expect(missing).toEqual([]);
   });
 
+  /** A token reads a color role, or an appearance role whose value is itself a whole color (the
+   *  greeting glow carries its own alpha, which an RGB triplet cannot). */
   it('lets a theme set every color token the stylesheet declares', () => {
-    const registered = new Set(Object.keys(defaultTheme).map((key) => key.replace(/^rgb-/, '')));
+    const registered = new Set([
+      ...Object.keys(defaultTheme).map((key) => key.replace(/^rgb-/, '')),
+      ...Object.values(themeAppearanceProperties).map((property) => property.slice(2)),
+    ]);
     const unowned = [...declarations]
       .filter(([, reads]) => !reads.some((property) => registered.has(property)))
       .map(([token]) => token);

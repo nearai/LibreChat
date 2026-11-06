@@ -2,7 +2,7 @@ import { useState, useId } from 'react';
 import { useRecoilValue } from 'recoil';
 import * as Ariakit from '@ariakit/react';
 import { BookmarkFilledIcon, BookmarkIcon } from '@radix-ui/react-icons';
-import { DropdownPopup, TooltipAnchor, Spinner } from '@librechat/client';
+import { DropdownPopup, TooltipAnchor, Spinner, chromeIconButtonClasses } from '@librechat/client';
 import type { FC } from 'react';
 import { BookmarkContext } from '~/Providers/BookmarkContext';
 import useBookmarkItems from '~/hooks/Chat/useBookmarkItems';
@@ -51,8 +51,9 @@ const BookmarkMenu: FC = () => {
                 aria-label={triggerAriaLabel}
                 aria-pressed={hasBookmarks}
                 className={cn(
-                  'border-border-chrome bg-presentation hover:bg-surface-hover flex size-9 shrink-0 items-center justify-center gap-2 rounded-xl border text-sm transition-colors duration-200',
-                  isMenuOpen ? 'bg-surface-hover' : '',
+                  chromeIconButtonClasses(),
+                  'gap-2 text-sm',
+                  isMenuOpen && 'bg-surface-active-alt',
                 )}
                 data-testid="bookmark-menu"
               >

@@ -8,6 +8,8 @@ interface QueryDevtoolsConfig {
 interface QueryDevtoolsGateProps {
   config?: QueryDevtoolsConfig;
   isDevelopment?: boolean;
+  /** The developer asked for the floating panel (`VITE_QUERY_DEVTOOLS=true`). */
+  devOptIn?: boolean;
 }
 
 const LazyReactQueryDevtools = lazyWithRecovery(() =>
@@ -16,13 +18,22 @@ const LazyReactQueryDevtools = lazyWithRecovery(() =>
   ),
 );
 
+/** Off unless asked for: a development build opts in with `VITE_QUERY_DEVTOOLS=true`, any build
+ *  through the server-injected `enableQueryDevtools`. The floating trigger otherwise sits over
+ *  the header's own controls. */
 export const shouldEnableQueryDevtools = ({
   isDevelopment = import.meta.env.DEV,
+  devOptIn = import.meta.env.VITE_QUERY_DEVTOOLS === 'true',
   config = typeof window === 'undefined' ? undefined : window.__LIBRECHAT_CONFIG__,
-}: QueryDevtoolsGateProps = {}) => isDevelopment || config?.enableQueryDevtools === true;
+}: QueryDevtoolsGateProps = {}) =>
+  (isDevelopment && devOptIn) || config?.enableQueryDevtools === true;
 
-export default function QueryDevtoolsGate({ isDevelopment, config }: QueryDevtoolsGateProps = {}) {
-  if (!shouldEnableQueryDevtools({ isDevelopment, config })) {
+export default function QueryDevtoolsGate({
+  isDevelopment,
+  devOptIn,
+  config,
+}: QueryDevtoolsGateProps = {}) {
+  if (!shouldEnableQueryDevtools({ isDevelopment, devOptIn, config })) {
     return null;
   }
 

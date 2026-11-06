@@ -1,5 +1,5 @@
 import { HatGlasses } from 'lucide-react';
-import { Chip, TooltipAnchor } from '@librechat/client';
+import { Chip, TooltipAnchor, chromeIconButtonClasses } from '@librechat/client';
 import { useShortcutAriaKey, useShortcutHint } from '~/hooks/useKeyboardShortcuts';
 import useTemporaryChat from '~/hooks/Chat/useTemporaryChat';
 import { useLocalize } from '~/hooks';
@@ -29,10 +29,10 @@ export function TemporaryChat() {
             aria-disabled={isEnforced}
             aria-keyshortcuts={isEnforced ? undefined : ariaKey}
             className={cn(
-              'border-border-chrome text-text-primary inline-flex size-9 shrink-0 items-center justify-center rounded-xl border transition-all ease-in-out',
-              isTemporary
-                ? 'bg-surface-active'
-                : 'bg-presentation hover:bg-surface-active-alt shadow-xs',
+              chromeIconButtonClasses(),
+              /* A mode, not an action: its glyph does not change, so while it is on it keeps
+                 the fill a press would show. */
+              isTemporary && 'bg-surface-active-alt',
               isEnforced && 'cursor-not-allowed',
             )}
           >

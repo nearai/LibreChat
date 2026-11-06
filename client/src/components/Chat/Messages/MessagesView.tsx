@@ -14,6 +14,7 @@ import { MessagePartsHostProvider, appMessagePartsHost } from '~/Providers/Messa
 import { MessagesViewProvider, useChatContext, useFileMapContext } from '~/Providers';
 import { RowMountProvider, useProgressiveRowMount } from '~/hooks/Messages';
 import { useChatSurface } from '~/components/Chat/Subagents/surface';
+import useDrawerViewport from '~/hooks/Nav/useDrawerViewport';
 import useThreadRows from '~/hooks/Messages/useThreadRows';
 import PendingSteers from './Content/Parts/PendingSteers';
 import { autoScrollAtom } from '~/store/autoScroll';
@@ -56,6 +57,7 @@ function MessagesViewContent({
   const { index, latestMessageId, latestMessageDepth, messagesKey } = useChatContext();
   const isSubmitting = useRecoilValue(store.isSubmittingFamily(index));
   const { showScrollButton, maximizeChatSpace } = useChatSurface();
+  const isSmallScreen = useDrawerViewport();
   const autoScroll = useAtomValue(autoScrollAtom);
 
   /** Direct measurement for the one trigger the observer cannot serve: after a messages
@@ -149,7 +151,12 @@ function MessagesViewContent({
               overflowAnchor: mountWindow != null ? 'none' : undefined,
             }}
           >
-            <div ref={contentRef} className="flex flex-col pt-14 pb-9">
+            {/* Clears the header where it overlays the thread (small screens); on desktop the
+                header is a toolbar above the canvas and the thread only needs breathing room. */}
+            <div
+              ref={contentRef}
+              className={cn('flex flex-col pb-9', isSmallScreen ? 'pt-14' : 'pt-6')}
+            >
               {(_messagesTree && _messagesTree.length == 0) || _messagesTree === null ? (
                 <div
                   className={cn(

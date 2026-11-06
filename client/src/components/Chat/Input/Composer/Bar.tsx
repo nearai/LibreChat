@@ -202,6 +202,13 @@ interface BarProps {
   showSpeech: boolean;
   speechDisabled: boolean;
   hasAddedConversation: boolean;
+  /** The model picker, when the composer carries it rather than the chat header. It sits beside
+   *  the `+`, leading the row. */
+  modelSlot?: React.ReactNode;
+  /** The draft is one line and nothing else sits in the composer, so the `+` and the controls
+   *  may join the text's row. The bar still keeps its own row while it carries the model picker
+   *  or chips, or is dictating. */
+  fold?: boolean;
   /** Code approval and review controls supplied by the composer shell. */
   approvalSlot?: React.ReactNode;
   /** Send, stop or the during-run split button, decided by the caller. */
@@ -236,6 +243,8 @@ function Bar({
   showSpeech,
   speechDisabled,
   hasAddedConversation,
+  modelSlot,
+  fold = false,
   approvalSlot,
   actionSlot,
   dictation,
@@ -313,6 +322,10 @@ function Bar({
     setRestingInline(inlineChips);
   }
   const chipsInline = dictating ? restingInline : inlineChips;
+  /** Folded, the bar hands its layout to the composer: `contents` drops its own boxes so the `+`
+   *  and the controls take their places in the composer's one-row grid (`data-folded` is what
+   *  that grid keys off). The dictation timer needs a row's width, so a recording unfolds it. */
+  const folded = fold && modelSlot == null && packedEntries.length === 0 && !dictating;
   const above = chipsInline ? EMPTY_ENTRIES : packedEntries;
   const inline = chipsInline ? packedEntries : EMPTY_ENTRIES;
 
@@ -365,7 +378,7 @@ function Bar({
   };
 
   return (
-    <div ref={rootRef} className={barClass}>
+    <div ref={rootRef} data-folded={folded || undefined} className={folded ? 'contents' : barClass}>
       {/* Full-width rows, so the chips run right across the composer including
           the corner the `+` sits in. Labelled the same as the row below: one
           set of tools that happens to need two rows to fit.
@@ -381,6 +394,7 @@ function Bar({
           above.length > 0 && !dictating
             ? 'grid-rows-[1fr] opacity-100'
             : 'grid-rows-[0fr] opacity-0',
+          folded && 'hidden',
         )}
       >
         <div className="overflow-hidden">
@@ -399,10 +413,18 @@ function Bar({
           </div>
         </div>
       </div>
-      <div ref={rowRef} className={rowClass}>
+      <div ref={rowRef} className={folded ? 'contents' : rowClass}>
         {/* Never unmounted, so its glyph can turn into the close mark rather
             than one icon being swapped for another. */}
-        <span ref={plusRef} className="shrink-0">
+        {/* The picker shares the `+`'s measured box, so the chips that fit beside them are
+            measured against what is left of the row. */}
+        <span
+          ref={plusRef}
+          className={cn(
+            'flex shrink-0 items-center gap-1',
+            folded && 'col-start-1 row-start-1 self-center ps-2',
+          )}
+        >
           <Palette
             index={index}
             entries={entries}
@@ -423,6 +445,20 @@ function Bar({
             canAttach={canAttach}
             anchorRef={anchorRef}
           />
+          {modelSlot != null && (
+            <span
+              aria-hidden={dictating}
+              {...(dictating ? { inert: '' } : {})}
+              className={cn(
+                'flex min-w-0 transition duration-200 ease-out motion-reduce:transition-none',
+                dictating
+                  ? 'pointer-events-none translate-y-3 opacity-0'
+                  : 'translate-y-0 opacity-100',
+              )}
+            >
+              {modelSlot}
+            </span>
+          )}
         </span>
         {/* A box rather than `contents` so it has something to move: the split
             only puts chips here when they all fit on this line, so wrapping as
@@ -437,6 +473,7 @@ function Bar({
           {...(dictating ? { inert: '' } : {})}
           className={cn(
             'flex min-w-0 flex-wrap items-center gap-1.5',
+            folded && 'hidden',
             'transition duration-200 ease-out motion-reduce:transition-none',
             dictating ? 'pointer-events-none translate-y-3 opacity-0' : 'translate-y-0 opacity-100',
           )}
@@ -452,7 +489,11 @@ function Bar({
             what has no job during a recording actually moves. */}
         <div
           ref={controlsRef}
-          className={cn('flex shrink-0 items-center gap-1.5', isRTL ? 'mr-auto' : 'ml-auto')}
+          className={cn(
+            'flex shrink-0 items-center gap-1.5',
+            isRTL ? 'mr-auto' : 'ml-auto',
+            folded && 'col-start-3 row-start-1 self-center pe-2',
+          )}
         >
           {/* One cell holding both: the settled controls drop out of it as the
               elapsed time rises into their place, and the row keeps one width

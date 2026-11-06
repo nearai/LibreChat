@@ -328,9 +328,8 @@ function Conversation({
       data-conversation-id={conversationId}
       className={cn(
         'group focus-visible:ring-text-primary relative flex h-12 w-full items-center rounded-lg outline-hidden focus-visible:ring-2 focus-visible:outline-hidden focus-visible:ring-inset md:h-9',
-        isActiveConvo || isPopoverActive
-          ? 'bg-surface-nav-selected before:bg-text-primary before:absolute before:top-1 before:bottom-1 before:left-0 before:w-0.5 before:rounded-full'
-          : 'hover:bg-surface-nav-hover',
+        /* The selected fill alone marks the row; no edge bar beside it. */
+        isActiveConvo || isPopoverActive ? 'bg-surface-nav-selected' : 'hover:bg-surface-nav-hover',
       )}
       onPointerEnter={(event) => {
         if (event.pointerType === 'mouse') {
@@ -392,7 +391,9 @@ function Conversation({
           {/* Status sits on the avatar so the row's trailing edge stays free for its badges
               and menu. The ring is 2.125rem around the 1.25rem icon: offset by half the
               difference. Both are rem so the ring follows the icon box at any UI scale. */}
-          <span className="relative flex size-5 shrink-0 items-center justify-center">
+          {/* `text-text-secondary`, as the project folders above: an icon drawn in the current
+              color (a tinted mark, a provider glyph) reads as the row's icon, not its text. */}
+          <span className="text-text-secondary relative flex size-5 shrink-0 items-center justify-center">
             <ConversationEndpointIcon conversation={conversation} size={20} context="menu-item" />
             {isGenerating && (
               <Spinner

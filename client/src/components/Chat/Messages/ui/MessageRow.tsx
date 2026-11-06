@@ -55,7 +55,12 @@ function renderAuthorHeader({
   align: 'start' | 'end';
 }) {
   return (
-    <h2 className={authorHeaderClasses[align]}>
+    /* `data-author-header` lets `interface.messageAuthor: false` take an agent's name line off
+       the page (style.css) without a config subscription in every row. */
+    <h2
+      className={authorHeaderClasses[align]}
+      data-author-header={align === 'start' ? 'agent' : undefined}
+    >
       {align === 'end' && (
         <MessageTimestamp value={timestamp} className="mr-auto shrink-0 font-normal" />
       )}

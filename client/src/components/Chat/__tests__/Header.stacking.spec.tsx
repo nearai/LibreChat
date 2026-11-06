@@ -22,8 +22,13 @@ jest.mock('librechat-data-provider', () => ({
     jest.requireActual('librechat-data-provider').isForcedTemporaryRetention,
 }));
 jest.mock('~/data-provider', () => ({ useGetStartupConfig: () => ({ data: undefined }) }));
+/** The shield reaches the theme registry, which the partial data-provider mock above omits. */
+jest.mock('../Attestation', () => ({ AttestationShield: () => null }));
 jest.mock('~/hooks', () => ({ useHasAccess: () => false }));
-jest.mock('~/hooks/Nav/useDrawerViewport', () => () => false);
+let mockSmallScreen = false;
+let mockPhone = false;
+jest.mock('~/hooks/Nav/useDrawerViewport', () => () => mockSmallScreen);
+jest.mock('~/hooks/Nav/usePhoneViewport', () => () => mockPhone);
 jest.mock('~/store', () => ({
   __esModule: true,
   default: {
@@ -49,7 +54,9 @@ jest.mock('../Trace', () => ({ useTraceControl: () => ({ show: false }) }));
 jest.mock('../BackgroundTasks', () => ({
   BackgroundTasksButton: jest.fn(() => <div data-testid="conversation-tasks" />),
 }));
-jest.mock('../Menus/Endpoints/ModelSelector', () => () => null);
+jest.mock('../Menus/Endpoints/ModelSelector', () => () => (
+  <div data-testid="header-model-picker" />
+));
 jest.mock('../ExportAndShareMenu', () => () => null);
 jest.mock('../SubagentThreadLink', () => () => null);
 jest.mock('../Menus/BookmarkMenu', () => () => null);
@@ -61,13 +68,23 @@ describe('Header stacking', () => {
   beforeEach(() => {
     backgroundTasks.mockClear();
     mockEndpoint.current = 'agents';
+    mockSmallScreen = false;
+    mockPhone = false;
   });
 
   test('keeps header controls above the z-10 composer approval review', () => {
+    mockSmallScreen = true;
     const { container } = render(<Header />);
 
     expect(container.firstElementChild).toHaveClass('absolute', 'top-0', 'z-20');
     expect(backgroundTasks).toHaveBeenCalled();
+  });
+
+  test('sits in the toolbar band above the canvas on desktop rather than overlaying it', () => {
+    const { container } = render(<Header />);
+
+    expect(container.firstElementChild).toHaveClass('relative', 'z-20', 'h-12');
+    expect(container.firstElementChild).not.toHaveClass('absolute');
   });
 
   test('keeps conversation task controls mounted across endpoint switches', () => {
@@ -80,5 +97,34 @@ describe('Header stacking', () => {
   test('does not mount parent task controls on child threads', () => {
     render(<Header parentConversationId="parent" />);
     expect(backgroundTasks).not.toHaveBeenCalled();
+  });
+});
+
+/** The composer carries the picker from tablet width up (`ChatForm`'s `modelSlot`); the header
+ *  takes it only on a phone, so a drawer-width tablet keeps the full composer with it inside. */
+describe('Header model picker', () => {
+  beforeEach(() => {
+    mockEndpoint.current = 'agents';
+  });
+
+  test('carries the picker on a phone', () => {
+    mockSmallScreen = true;
+    mockPhone = true;
+    render(<Header />);
+    expect(screen.getByTestId('header-model-picker')).toBeInTheDocument();
+  });
+
+  test('leaves it to the composer at tablet width, where navigation is already a drawer', () => {
+    mockSmallScreen = true;
+    mockPhone = false;
+    render(<Header />);
+    expect(screen.queryByTestId('header-model-picker')).not.toBeInTheDocument();
+  });
+
+  test('leaves it to the composer on desktop', () => {
+    mockSmallScreen = false;
+    mockPhone = false;
+    render(<Header />);
+    expect(screen.queryByTestId('header-model-picker')).not.toBeInTheDocument();
   });
 });

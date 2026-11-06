@@ -9,6 +9,9 @@ export interface IThemeRGB {
   'rgb-text-secondary-alt'?: string;
   'rgb-text-tertiary'?: string;
   'rgb-text-muted'?: string;
+  /** A field's placeholder: the composer's prompt before anything is typed. Follows
+   *  `rgb-text-tertiary` in a theme that does not set it. */
+  'rgb-text-placeholder'?: string;
   /** The shared Badge's label ink; follows `rgb-text-primary` when a theme omits it. */
   'rgb-badge-label'?: string;
   'rgb-text-warning'?: string;
@@ -128,6 +131,9 @@ export interface IThemeRGB {
   'rgb-alert-error-fill'?: string;
   'rgb-alert-error-border'?: string;
   'rgb-surface-canvas'?: string;
+  /** The app frame: the ground the navigation rail sits on and the content pane floats over.
+   *  Follows `rgb-surface-primary-alt` in a theme that does not set it. */
+  'rgb-surface-shell'?: string;
   'rgb-surface-user-message'?: string;
   'rgb-surface-card'?: string;
   'rgb-surface-card-hover'?: string;
@@ -259,6 +265,7 @@ export interface IThemeVariables {
   '--text-secondary-alt': string;
   '--text-tertiary': string;
   '--text-muted': string;
+  '--text-placeholder': string;
   '--badge-label': string;
   '--text-warning': string;
   '--text-destructive': string;
@@ -337,6 +344,7 @@ export interface IThemeVariables {
   '--alert-error-fill': string;
   '--alert-error-border': string;
   '--surface-canvas': string;
+  '--surface-shell': string;
   '--surface-user-message': string;
   '--surface-card': string;
   '--surface-card-hover': string;
@@ -424,6 +432,7 @@ export interface IThemeColors {
   'text-secondary-alt'?: string;
   'text-tertiary'?: string;
   'text-muted'?: string;
+  'text-placeholder'?: string;
   'badge-label'?: string;
   'text-warning'?: string;
   'text-destructive'?: string;
@@ -496,6 +505,7 @@ export interface IThemeColors {
   'alert-error-fill'?: string;
   'alert-error-border'?: string;
   'surface-canvas'?: string;
+  'surface-shell'?: string;
   'surface-user-message'?: string;
   'surface-card'?: string;
   'surface-card-hover'?: string;
@@ -713,6 +723,12 @@ export interface IThemeAppearance {
    *  and the light menu shadow follows `shadowLg` when a theme names only that. */
   menuShadow: string;
   tooltipShadow: string;
+  /**
+   * The welcome screen's ambient light: a CSS color, alpha included, blurred along the composer's
+   * top edge so it leaks from behind the composer and rises behind the greeting. `transparent`,
+   * the default, draws none.
+   */
+  greetingGlow: string;
   motionFast: string;
   motionNormal: string;
   /**

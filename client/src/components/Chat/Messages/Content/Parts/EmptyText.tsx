@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { WaitMark } from '../../ui/Mark';
 import { cn } from '~/utils';
 
 type EmptyTextPartProps = {
@@ -20,6 +21,7 @@ const EmptyTextPart = memo(({ underHeaderIcon = false }: EmptyTextPartProps) => 
       <div className="markdown prose dark:prose-invert light w-full break-words">
         <div className={cn('absolute', underHeaderIcon && 'ps-1.5')}>
           <p className="submitting relative">
+            <WaitMark />
             <span className="result-thinking" />
           </p>
         </div>

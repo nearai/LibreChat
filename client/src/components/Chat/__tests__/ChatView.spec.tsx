@@ -18,8 +18,10 @@ jest.mock('~/hooks/AuthContext', () => ({
   useAuthContext: () => ({ isAuthenticated: false, user: null, roles: {} }),
 }));
 
+const mockCachedConversation = jest.fn();
 jest.mock('~/data-provider', () => ({
   useGetMessagesByConvoId: () => ({ data: null, isLoading: false, isFetching: false }),
+  useGetConvoIdQuery: () => ({ data: mockCachedConversation() }),
   useProjectQuery: () => ({ data: undefined }),
 }));
 
@@ -41,7 +43,12 @@ jest.mock('~/hooks', () => ({
 
 jest.mock('../Presentation', () => ({
   __esModule: true,
-  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  default: ({ children, toolbar }: { children: React.ReactNode; toolbar?: React.ReactNode }) => (
+    <div>
+      {toolbar}
+      {children}
+    </div>
+  ),
 }));
 jest.mock('../Header', () => ({ __esModule: true, default: () => <div /> }));
 jest.mock('../Footer', () => ({
@@ -64,6 +71,7 @@ describe('ChatView page heading', () => {
   beforeEach(() => {
     mockParams.mockReturnValue({});
     mockConversation.mockReturnValue(null);
+    mockCachedConversation.mockReturnValue(undefined);
   });
 
   test('exposes a single h1 to assistive technology', () => {
@@ -188,5 +196,91 @@ describe('ChatView composer column', () => {
 
     expect(composerColumn).toHaveClass('[view-transition-name:chat-form]');
     expect(composerColumn).toHaveClass('relative', 'z-10');
+  });
+
+  /** A generated title lands in the conversation query cache, not the in-memory conversation,
+   *  which still says "New Chat" until the conversation is loaded again. */
+  test('takes a generated title from the conversation cache over the in-memory one', () => {
+    mockParams.mockReturnValue({ conversationId: 'convo-1' });
+    mockConversation.mockReturnValue({ conversationId: 'convo-1', title: 'New Chat' });
+    mockCachedConversation.mockReturnValue({
+      conversationId: 'convo-1',
+      title: 'Deploy checklist',
+    });
+
+    render(<ChatView />);
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Deploy checklist' })).toBeInTheDocument();
+  });
+
+  test('ignores a cached conversation that is not the one in the route', () => {
+    mockParams.mockReturnValue({ conversationId: 'convo-2' });
+    mockConversation.mockReturnValue({ conversationId: 'convo-2', title: 'Release notes' });
+    mockCachedConversation.mockReturnValue({ conversationId: 'convo-1', title: 'Previous chat' });
+
+    render(<ChatView />);
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Release notes' })).toBeInTheDocument();
+  });
+});
+
+describe('ChatView welcome glow', () => {
+  beforeEach(() => {
+    mockConversation.mockReturnValue(null);
+    mockCachedConversation.mockReturnValue(undefined);
+  });
+
+  /** The light leaks from behind the composer's top edge: its anchor sits right on top of the
+   *  composer band, and a window as wide as the composer, clipped at that edge, holds two radial
+   *  washes centered on it, so none of the light reaches below the composer. */
+  test('lights the welcome screen from behind the composer, above its edge only', () => {
+    mockParams.mockReturnValue({});
+
+    const { container } = render(<ChatView />);
+
+    const anchor = screen.getByTestId('composer-glow');
+    const composerColumn = container.querySelector('[class*="view-transition-name:chat-form"]');
+    expect(anchor).toHaveAttribute('aria-hidden', 'true');
+    expect(anchor).toHaveClass('relative', 'h-0');
+    expect(anchor.nextElementSibling).toBe(composerColumn);
+    expect(anchor.parentElement).toHaveClass('isolate');
+
+    const glowWindow = anchor.firstElementChild as HTMLElement;
+    expect(glowWindow).toHaveClass('inset-x-0', 'bottom-0', '-z-10', 'overflow-hidden');
+
+    /* Each layer sits inset from the window's sides by more than `blur-lg` spreads, so the
+       window's clip never cuts a lit edge into a visible seam. */
+    const [halo, core] = Array.from(glowWindow.children);
+    for (const layer of [halo, core]) {
+      expect(layer).toHaveClass('bottom-0', 'translate-y-1/2', 'bg-radial', 'to-transparent');
+      expect(layer).toHaveClass('blur-lg');
+    }
+    /* Heights follow widths, so a phone's narrower arch is lower too, not a tall dome. */
+    expect(halo).toHaveClass('from-greeting-glow/70', 'inset-x-12', 'aspect-5/2');
+    expect(core).toHaveClass('from-greeting-glow', 'inset-x-1/8', 'aspect-7/1');
+  });
+
+  /** An opaque band around the composer would cut the light into a rectangle; it stays clear on
+   *  the welcome screen and is painted only where it covers a morphing card. */
+  test('keeps the composer band clear on the welcome screen only', () => {
+    mockParams.mockReturnValue({});
+    const { container, unmount } = render(<ChatView />);
+    const selector = '[class*="view-transition-name:chat-form"]';
+    expect(container.querySelector(selector)).not.toHaveClass('bg-surface-canvas');
+    unmount();
+
+    mockParams.mockReturnValue({ conversationId: 'convo-1' });
+    mockConversation.mockReturnValue({ conversationId: 'convo-1', title: 'Deploy checklist' });
+    const conversation = render(<ChatView />);
+    expect(conversation.container.querySelector(selector)).toHaveClass('bg-surface-canvas');
+  });
+
+  test('leaves the glow out of an open conversation', () => {
+    mockParams.mockReturnValue({ conversationId: 'convo-1' });
+    mockConversation.mockReturnValue({ conversationId: 'convo-1', title: 'Deploy checklist' });
+
+    render(<ChatView />);
+
+    expect(screen.queryByTestId('composer-glow')).not.toBeInTheDocument();
   });
 });

@@ -5,6 +5,13 @@ import { EModelEndpoint, ProviderId } from 'librechat-data-provider';
 import type { TEndpointsConfig } from 'librechat-data-provider';
 import MinimalIcon from '../MinimalIcon';
 
+let mockShouldTint = false;
+/** The monochrome sample needs a real canvas; the verdict is what this component acts on. */
+jest.mock('~/hooks/useAdaptiveIcon', () => ({
+  __esModule: true,
+  default: () => ({ shouldTint: mockShouldTint }),
+}));
+
 describe('MinimalIcon', () => {
   it('renders the provider mark for a first-class endpoint', () => {
     render(<MinimalIcon endpoint={EModelEndpoint.openAI} isCreatedByUser={false} />);
@@ -47,6 +54,21 @@ describe('MinimalIcon', () => {
       'src',
       'https://cdn.example.com/logo.png',
     );
+  });
+
+  /** A one-ink endpoint mark follows the text color around it, as MCP and group icons do. */
+  it('tints a one-ink SVG iconURL to the current color', () => {
+    mockShouldTint = true;
+    const { container } = render(
+      <MinimalIcon endpoint="NEAR AI" iconURL="/assets/mark.svg" isCreatedByUser={false} />,
+    );
+    mockShouldTint = false;
+
+    const tinted = container.querySelector('.custom-icon-tint');
+    expect(tinted).not.toBeNull();
+    /** Drawn as a mask over the current color, so the image itself never paints. */
+    expect(tinted?.getAttribute('style')).toContain('/assets/mark.svg');
+    expect(container.querySelector('img[src="/assets/mark.svg"]')).toBeNull();
   });
 
   it('uses the server providerId when no iconURL is configured', () => {

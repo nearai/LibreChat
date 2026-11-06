@@ -6,14 +6,21 @@ NEAR AI's own instance, "Private AI for NEAR AI". The general deploy steps and a
 
 | What | Where | Kind |
 |---|---|---|
-| Brand theme (light and dark), welcome text, Google sign-in restricted to `near.ai` | `nearai/deploy/nearai-internal.yaml` | Config: restart to apply |
+| Near AI OS theme (light and dark), welcome title and subtitle, the brand-blue light leaking from behind the composer's top edge (`greetingGlow`), Google sign-in restricted to `near.ai` | `nearai/deploy/nearai-internal.yaml` | Config: restart to apply |
+| Sidebar brand (N mark and "near ai" wordmark); NEAR's process mark beside a streaming thought and in place of the waiting dot (settled thoughts carry no glyph); replies without an author line; a chat bubble around the N, in the row's icon color, on chat rows | `interface.brand`, `interface.messageAuthor` and the endpoint's `iconURL` in the same file; marks in `client/public/assets/nearai-*.svg` | Config and assets |
 | NEAR AI tile logo, favicons and app icons | `client/public/assets/` | Assets: rebuild |
-| Brand fonts: Mona Sans, Schibsted Grotesk, JetBrains Mono (SIL OFL 1.1) | `client/public/assets/fonts/nearai/`, linked from `client/index.html` | Assets: rebuild |
-| Tab title before load, install name "Private AI", brand blue title bar | `client/index.html`, `client/vite.config.ts` | Build |
+| Tab title before load, install name "Private AI", scene-colored title bar | `client/index.html`, `client/vite.config.ts` | Build |
+| App shell: icon rail, toolbar band, floating sidebar and chat cards, model picker in the composer | `client/src` (UnifiedSidebar, Chat) and `packages/client` | Code: rebuild |
 
-Colors follow [near.ai/brand](https://near.ai/brand): Blue `#0091FD`, Black, Off-White `#EEEEEB`,
-Dark Grey `#272727`, Grey `#A7A7A7`, Sky `#83DCFF`. Where text sits on blue or is blue, the theme
-uses a darker brand blue `#0066B3` (light) or Sky (dark) to keep WCAG AA contrast.
+The theme follows the [Near AI OS Design System](https://github.com/rdisandro/near-ai-os-design-system)
+parent `light` and `dark` themes: cool neutrals (navy `scene` and `pane-opaque` in dark, cool greys in
+light), NEAR AI blue as the one accent, capsule controls and concentric corners. The web has no
+desktop behind the system's glass, so every surface takes the opaque fallback, with the glass alphas
+pre-blended onto the pane. Type uses the platform's own faces (decision NDS-4), so the instance no
+longer bundles brand webfonts.
+
+The shell is code, not config, so it travels with every theme: a merge from the product branch can
+conflict in the files listed above.
 
 ## Railway
 
@@ -26,6 +33,8 @@ uses a darker brand blue `#0066B3` (light) or Sky (dark) to keep WCAG AA contras
   `https://librechat-nearai.up.railway.app/oauth/google/callback`.
 - `DOMAIN_CLIENT` and `DOMAIN_SERVER` = `https://librechat-nearai.up.railway.app`.
 - `NEAR_AI_VERIFY_URL=https://cloud.near.ai/verify` (the shields' "View details on NEAR AI" link).
+- `CUSTOM_FOOTER` (optional): the line under the composer. Unset, the welcome screen shows LibreChat's
+  version line; for example `Private AI can make mistakes. Check important information.`
 
 ## Updating from the product
 

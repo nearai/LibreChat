@@ -11,6 +11,7 @@ export const darkTheme: IThemeRGB = {
   'rgb-text-secondary-alt': '153 150 150', // #999696 (gray-400)
   'rgb-text-tertiary': '153 150 150', // #999696 (gray-400)
   'rgb-text-muted': '179 182 189', // #b3b6bd (Click UI text.muted)
+  'rgb-text-placeholder': '153 150 150', // matching text-tertiary
   'rgb-badge-label': '236 236 236', // #ececec (gray-100, matching text-primary)
   'rgb-text-warning': '245 158 11', // #f59e0b (amber-500)
   'rgb-text-destructive': '248 113 113', // #f87171 (red-400)
@@ -95,6 +96,7 @@ export const darkTheme: IThemeRGB = {
   'rgb-alert-error-fill': '69 10 10', // matching status-error-subtle
   'rgb-alert-error-border': '153 27 27', // matching status-error-border
   'rgb-surface-canvas': '23 23 23', // matching surface-primary-alt
+  'rgb-surface-shell': '23 23 23', // matching surface-primary-alt
   'rgb-surface-user-message': '47 47 47', // matching surface-tertiary
   'rgb-surface-card': '33 33 33', // matching surface-secondary
   'rgb-surface-card-hover': '47 47 47', // matching surface-tertiary

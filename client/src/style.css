@@ -1560,6 +1560,201 @@ html {
   }
 }
 
+/* NEAR's process mark (Messages/ui/Mark.tsx `ProcessMark`), from Ironclaw's web UI
+   (near-process-indicator.tsx, MIT, NEAR AI): the N dims while a light chases its spine and the
+   glyph turns once and beats twice. A brand that chooses it (`interface.brand.indicator: near`,
+   which Root sets on the root) shows it, working, in place of the waiting dot and of the live
+   reasoning row's lightbulb, so it sits beside the thought as it streams. */
+@keyframes lc-near-pulse {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  22%,
+  50% {
+    transform: rotate(360deg) scale(1);
+  }
+  58% {
+    transform: rotate(360deg) scale(1.28);
+  }
+  66% {
+    transform: rotate(360deg) scale(0.98);
+  }
+  74% {
+    transform: rotate(360deg) scale(1.16);
+  }
+  82%,
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+/* The mark drawn at the dot (`WaitMark`) covers the wait, so the dot steps aside. */
+:root[data-thinking-indicator='near'] .submitting .result-thinking:empty:last-child:after {
+  content: none;
+}
+
+/* The brand blue is the mark's artwork, not a theme role, so it is set here with the mark
+   rather than taken from the palette. */
+@keyframes lc-near-chase {
+  to {
+    stroke-dashoffset: -66;
+  }
+}
+.lc-near-mark {
+  color: #0091fd;
+  flex: none;
+  overflow: visible;
+}
+.lc-near-mark-base {
+  fill: currentColor;
+}
+.lc-near-mark.is-working {
+  animation: lc-near-pulse 2s ease-in-out infinite;
+}
+.lc-near-mark.is-working .lc-near-mark-base {
+  opacity: 0.24;
+}
+/* A short lit segment and a long gap, so one light travels the ~66-unit spine; the keyframe
+   shifts one whole period, so the loop has no seam. */
+.lc-near-mark-light {
+  animation: lc-near-chase 1.1s linear infinite;
+  fill: none;
+  filter: drop-shadow(0 0 1.5px currentColor);
+  stroke: currentColor;
+  stroke-dasharray: 10 56;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lc-near-mark.is-working {
+    animation: none;
+  }
+  .lc-near-mark.is-working .lc-near-mark-base {
+    opacity: 1;
+  }
+  .lc-near-mark-light {
+    display: none;
+  }
+}
+
+/* The NEAR AI mark drawn like a marker on the welcome screen (Chat/Messages/ui/Mark.tsx
+   `DrawnMark`), after Trace Commons' first run (`WelcomeScreenLayout`): the pen inks the mark in
+   along its center line over one second after a 0.2s beat, on a slow-in, slow-out curve, with a
+   white tip glowing at its front; a light band crosses the mark at 1.5s and every 15s after.
+   Custom CSS exception: the motion animates SVG stroke dashes, a motion path and a skewed band,
+   none of which a utility expresses. The brand blue is the mark's artwork, as for the process
+   mark above: the first run's light-mode blue on a light page, its own blue on a dark one. */
+@keyframes lc-drawn-mark-ink {
+  from {
+    stroke-dashoffset: 1.05;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes lc-drawn-mark-tip-move {
+  from {
+    offset-distance: 1.4%;
+  }
+  to {
+    offset-distance: 100%;
+  }
+}
+@keyframes lc-drawn-mark-tip-fade {
+  0% {
+    opacity: 0;
+  }
+  5%,
+  92% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes lc-drawn-mark-shine {
+  0% {
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+    transform: translateX(-240px) skewX(-18deg);
+  }
+  9%,
+  100% {
+    transform: translateX(470px) skewX(-18deg);
+  }
+}
+.lc-drawn-mark {
+  color: #0070c6;
+  flex: none;
+}
+.dark .lc-drawn-mark {
+  color: #0091fd;
+}
+/* A dash as long as the whole line, offset just past its start, then drawn back to it; white,
+   so the mask it draws lets the whole mark through. */
+.lc-drawn-mark-ink {
+  animation: lc-drawn-mark-ink 1s cubic-bezier(0.65, 0, 0.35, 1) 0.2s both;
+  stroke: #fff;
+  stroke-dasharray: 1 2;
+  stroke-dashoffset: 0;
+}
+.lc-drawn-mark-light {
+  stop-color: #fff;
+}
+/* The tip leads the stroke's center by 14 of the line's ~983 units, inside the pen's round end. */
+.lc-drawn-mark-tip {
+  animation:
+    lc-drawn-mark-tip-move 1s cubic-bezier(0.65, 0, 0.35, 1) 0.2s both,
+    lc-drawn-mark-tip-fade 1s linear 0.2s both;
+  fill: #fff;
+  filter: drop-shadow(0 0 17px currentColor);
+  offset-path: path('M167.5 234.6L101 312L101 86L299 320L299 84L226 170');
+  offset-rotate: 0deg;
+}
+.lc-drawn-mark-shine {
+  animation: lc-drawn-mark-shine 15s linear 1.5s infinite both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lc-drawn-mark-ink {
+    animation: none;
+  }
+  .lc-drawn-mark-tip,
+  .lc-drawn-mark-shine {
+    display: none;
+  }
+}
+
+/* Each live site draws the mark beside the glyph it replaces and the root picks one, so no row
+   subscribes to the config. Settled thoughts keep no glyph, and drop the slot that held it so
+   the label sits flush with the reply. */
+.lc-live-mark {
+  display: none;
+}
+:root[data-thinking-indicator='near'] .lc-live-mark {
+  display: block;
+}
+:root[data-thinking-indicator='near'] .lc-live-glyph,
+:root[data-thinking-indicator='near'] .lc-reasoning-slot {
+  display: none;
+}
+
+/* `interface.messageAuthor: false` (Root sets the attribute): the name and icon above a reply
+   leave the page but stay in the accessibility tree, as Tailwind's `sr-only` keeps text. Only
+   the agent-side header carries the marker; a user-side turn written by an agent keeps its
+   author, since that name is what tells the reader someone else wrote it. */
+:root[data-hide-message-author] [data-author-header='agent'] {
+  border-width: 0;
+  clip: rect(0, 0, 0, 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
 .shadow-stroke {
   position: relative;
 }

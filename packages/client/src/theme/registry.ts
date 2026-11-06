@@ -127,6 +127,7 @@ export const layerRoleSources: ReadonlyArray<
   readonly [keyof IThemeRGB, keyof IThemeRGB, keyof IThemeRGB]
 > = [
   ['rgb-surface-canvas', 'rgb-surface-primary-alt', 'rgb-surface-primary-alt'],
+  ['rgb-surface-shell', 'rgb-surface-primary-alt', 'rgb-surface-primary-alt'],
   ['rgb-surface-user-message', 'rgb-surface-tertiary', 'rgb-surface-tertiary'],
   ['rgb-surface-card', 'rgb-surface-secondary', 'rgb-surface-secondary'],
   ['rgb-surface-card-hover', 'rgb-surface-tertiary', 'rgb-surface-tertiary'],
@@ -299,6 +300,7 @@ export const themeAppearanceProperties: Readonly<
   shadow2xl: '--theme-shadow-2xl',
   menuShadow: '--theme-menu-shadow',
   tooltipShadow: '--theme-tooltip-shadow',
+  greetingGlow: '--theme-greeting-glow',
   motionFast: '--theme-motion-fast',
   motionNormal: '--theme-motion-normal',
   chromeBorderAlpha: '--theme-border-chrome-alpha',
@@ -397,6 +399,7 @@ export const defaultAppearance: IThemeAppearance = Object.freeze({
   shadow2xl: '0 25px 50px -12px rgb(0 0 0 / 0.25)',
   menuShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
   tooltipShadow: '0 2px 4px 0 rgb(0 0 0 / 0.25)',
+  greetingGlow: 'transparent',
   motionFast: '150ms',
   motionNormal: '200ms',
   chromeBorderAlpha: '1',
@@ -654,6 +657,13 @@ export function resolveTheme(theme: ThemeDefinition, mode: ThemeMode): ResolvedT
     customColors?.['rgb-text-primary'] !== undefined
       ? { 'rgb-shimmer-base': customColors['rgb-text-primary'] }
       : {};
+  /** The composer's placeholder was set in `text-tertiary` before it had a role, so a theme that
+   *  repaints tertiary keeps its placeholder on it. */
+  const textPlaceholderFallback: IThemeRGB =
+    customColors?.['rgb-text-placeholder'] === undefined &&
+    customColors?.['rgb-text-tertiary'] !== undefined
+      ? { 'rgb-text-placeholder': customColors['rgb-text-tertiary'] }
+      : {};
   const textMutedFallback: IThemeRGB =
     customColors?.['rgb-text-muted'] === undefined &&
     customColors?.['rgb-text-tertiary'] !== undefined
@@ -829,6 +839,7 @@ export function resolveTheme(theme: ThemeDefinition, mode: ThemeMode): ResolvedT
       ...composerHoverFallback,
       ...shimmerBaseFallback,
       ...textMutedFallback,
+      ...textPlaceholderFallback,
       ...proseLinkFallback,
       ...proseFallback,
       ...avatarPlaceholderFallback,

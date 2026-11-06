@@ -28,6 +28,7 @@ jest.mock('@librechat/client', () => {
     TooltipAnchor: ({ render }: { render: React.ReactNode }) => render,
     Spinner: () => null,
     useToastContext: () => ({ showToast: jest.fn() }),
+    chromeIconButtonClasses: () => '',
   };
 });
 
